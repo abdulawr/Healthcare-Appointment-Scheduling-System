@@ -1,166 +1,209 @@
-# Healthcare Appointment Scheduling System
+# Healthcare Appointment Scheduling System 
 
-## Description
 
-The Healthcare Appointment Scheduling System is a microservices-based application that provides an efficient way to manage healthcare appointments. The system will allow patients to register, view available appointments, schedule appointments with doctors, and receive notifications. Additionally, the system will enable doctors to manage their schedules and availability. The solution will include features for patient registration, doctor availability management, appointment scheduling, and notification management.
-
-The system will be built using **Quarkus**, a Java framework for building high-performance microservices applications. **Hibernate** will be used for database management, and the system will integrate with external calendar APIs (such as Google Calendar) for scheduling.
+## 0) Overview
+The **Healthcare Appointment Scheduling System** is a microservices‑based application built with **Quarkus**, designed to efficiently manage healthcare appointments while ensuring scalability, resiliency, and observability. The system allows patients to register, doctors to manage availability, appointments to be scheduled seamlessly, notifications to be dispatched automatically, and analytics to be monitored in real time.
 
 ---
 
-## Microservices
+## 1) Microservices Overview
+The system includes **five** independently deployable services:
 
-### 1. **Patient Service**
-   - **Responsibilities**:
-     - Manages patient profiles, including personal information, medical history, and preferences.
-     - Allows patients to update their profiles, such as contact information and emergency contacts.
-     - Allows patients to view their past appointments and medical records (if applicable).
-   
-   - **Endpoints**:
-     - **POST /api/patients/register**: Registers a new patient.
-     - **GET /api/patients/{id}**: Retrieves the patient’s profile.
-     - **PUT /api/patients/{id}**: Updates the patient's profile.
-     - **GET /api/patients/{id}/appointments**: Lists the patient’s previous appointments.
-   
-   - **Technologies**:
-     - Quarkus RESTEasy for building REST APIs.
-     - Hibernate ORM for patient data management.
-     - PostgreSQL or MySQL for database storage.
+### 1️⃣ Patient Service
+**Responsibilities:**
+- Manage patient profiles: registration, personal info, contact details, medical history.
+- Allow patients to view, update, and delete their information.
+- Retrieve a patient’s appointment history via the Appointment Service.
 
----
+**Endpoints:**
+- `POST /api/patients/register` — Register new patient
+- `GET /api/patients/{id}` — Get patient details
+- `PUT /api/patients/{id}` — Update patient profile
+- `GET /api/patients/{id}/appointments` — View appointment history
 
-### 2. **Doctor Service**
-   - **Responsibilities**:
-     - Manages doctor profiles, including their names, specialties, and availability.
-     - Allows doctors to set their working hours and availability for appointments.
-     - Allows doctors to view their upcoming appointments.
-   
-   - **Endpoints**:
-     - **POST /api/doctors/register**: Registers a new doctor.
-     - **GET /api/doctors/{id}**: Retrieves a doctor's profile.
-     - **PUT /api/doctors/{id}**: Updates the doctor's profile.
-     - **GET /api/doctors/{id}/availability**: Lists available time slots for the doctor.
-     - **PUT /api/doctors/{id}/availability**: Updates the doctor’s availability.
-   
-   - **Technologies**:
-     - Quarkus RESTEasy for building REST APIs.
-     - Hibernate ORM for doctor data management.
-     - PostgreSQL or MySQL for database storage.
+**Technologies:**
+- Quarkus (RESTEasy Reactive, Panache ORM)
+- PostgreSQL database
+- OpenAPI for documentation
+- Micrometer Prometheus metrics + Grafana visualization
 
 ---
 
-### 3. **Appointment Service**
-   - **Responsibilities**:
-     - Manages scheduling, rescheduling, and cancellation of appointments between patients and doctors.
-     - Verifies the availability of doctors and schedules appointments accordingly.
-     - Handles cancellations and updates appointment statuses.
-   
-   - **Endpoints**:
-     - **POST /api/appointments**: Schedules a new appointment for a patient with a doctor.
-     - **GET /api/appointments/{id}**: Retrieves the details of an appointment.
-     - **PUT /api/appointments/{id}**: Updates an existing appointment (reschedule).
-     - **DELETE /api/appointments/{id}**: Cancels an existing appointment.
-   
-   - **Technologies**:
-     - Quarkus RESTEasy for building REST APIs.
-     - Hibernate ORM for appointment data management.
-     - PostgreSQL or MySQL for database storage.
-     - External Calendar API integration (Google Calendar, Outlook, etc.) for appointment scheduling and syncing.
+### 2️⃣ Doctor Service
+**Responsibilities:**
+- Manage doctor profiles: name, specialization, experience.
+- Handle availability slots (working hours, vacations).
+- Provide data for Appointment Service to verify slot availability.
+
+**Endpoints:**
+- `POST /api/doctors/register` — Register doctor
+- `GET /api/doctors/{id}` — Retrieve doctor profile
+- `PUT /api/doctors/{id}` — Update doctor details
+- `GET /api/doctors/{id}/availability` — Get available slots
+- `PUT /api/doctors/{id}/availability` — Update doctor’s availability
+
+**Technologies:**
+- Quarkus RESTEasy Reactive + Hibernate ORM Panache
+- PostgreSQL for persistence
+- Kafka producer for emitting `DoctorAvailabilityUpdated` events
+- Health check via MicroProfile Health
 
 ---
 
-### 4. **Notification Service**
-   - **Responsibilities**:
-     - Sends reminders and notifications to patients and doctors for upcoming appointments.
-     - Sends appointment confirmations when scheduled.
-     - Handles reminders for rescheduled or cancelled appointments.
-   
-   - **Endpoints**:
-     - **POST /api/notifications**: Sends a notification to the patient or doctor.
-     - **GET /api/notifications/{id}**: Retrieves a sent notification.
-   
-   - **Technologies**:
-     - Use Quarkus' integration with email and SMS services for sending notifications.
-     - Use third-party libraries for email (e.g., JavaMail) and SMS (e.g., Twilio).
-     - Cron jobs for reminder services.
+### 3️⃣ Appointment Service
+**Responsibilities:**
+- Schedule, reschedule, and cancel appointments between patients and doctors.
+- Verify doctor availability using data from the Doctor Service.
+- Persist appointment information and emit domain events for notifications and analytics.
+- Integrate with external calendar APIs (Google Calendar/Outlook).
+
+**Endpoints:**
+- `POST /api/appointments` — Schedule new appointment
+- `GET /api/appointments/{id}` — Retrieve appointment details
+- `PUT /api/appointments/{id}` — Reschedule appointment
+- `DELETE /api/appointments/{id}` — Cancel appointment
+
+**Technologies:**
+- Quarkus RESTEasy Reactive + Hibernate ORM Panache
+- PostgreSQL for persistence
+- Kafka (SmallRye Reactive Messaging)
+- OpenAPI + Swagger UI
+- Circuit breaker & retries for external calendar APIs (Fault Tolerance)
 
 ---
 
-## Database Design
+### 4️⃣ Notification Service
+**Responsibilities:**
+- Listen to Kafka topics and send appointment confirmations, reminders, and cancellation messages.
+- Support multiple channels (email, SMS, push notification stubs).
+- Schedule daily reminders using Quarkus Scheduler.
 
-- **Patient Table**: Stores patient data such as name, age, address, contact info, and medical history.
-- **Doctor Table**: Stores doctor information such as name, specialty, and work hours.
-- **Appointment Table**: Stores information about scheduled appointments including patient ID, doctor ID, appointment time, status, and appointment type.
-- **Notification Table**: Stores notification details like recipient, message, and sent status.
+**Endpoints:**
+- `GET /api/notifications/recent` — Retrieve recent notifications
 
----
-
-## Technologies
-
-- **Quarkus**: High-performance Java framework for building REST APIs and microservices.
-- **Hibernate ORM**: Object-relational mapping for managing database entities.
-- **PostgreSQL/MySQL**: Database for storing patient, doctor, appointment, and notification data.
-- **Google Calendar API**: For integrating with external calendar systems for scheduling.
-- **Quarkus Extensions**:
-  - `quarkus-resteasy`: For building RESTful APIs.
-  - `quarkus-hibernate-orm`: For integrating with databases via Hibernate.
-  - `quarkus-smallrye-reactive-messaging`: For asynchronous communication between services.
-  - `quarkus-scheduler`: For scheduling background tasks like reminders.
+**Technologies:**
+- Quarkus Reactive Messaging (Kafka consumer)
+- Quarkus Scheduler for reminders
+- JavaMail or Twilio integration for email/SMS
+- Micrometer Prometheus for notification metrics
+- Grafana dashboard to track delivery success/failure rates
 
 ---
 
-## Features
+### 5️⃣ Analytics Service (New)
+**Responsibilities:**
+- Collect and process operational and business data from all services.
+- Aggregate metrics such as number of appointments, cancellations, and doctor utilization.
+- Provide endpoints and dashboards for analytics visualization.
+- Consume Kafka topics (Appointment events) and store data for Prometheus/Grafana.
 
-### 1. **Patient Registration and Management**:
-   - Patients can register and update their personal and medical information.
-   - Patients can view their previous appointments and medical history (if applicable).
+**Endpoints:**
+- `GET /api/analytics/appointments/daily` — Daily appointment stats
+- `GET /api/analytics/doctor/{id}` — Doctor utilization metrics
+- `GET /api/analytics/system/overview` — Overall service health summary
 
-### 2. **Doctor Scheduling**:
-   - Doctors can set their working hours and availability.
-   - Patients can view available slots for doctors and book appointments accordingly.
-
-### 3. **Appointment Management**:
-   - Patients can schedule, reschedule, or cancel appointments.
-   - The system verifies the availability of doctors before confirming appointments.
-
-### 4. **Notifications**:
-   - Patients and doctors receive notifications for upcoming appointments, cancellations, and changes.
-   - Notification reminders are sent a day before the appointment.
-
----
-
-## Architecture
-
-### Microservices Interaction:
-- **Patient Service** interacts with **Appointment Service** to manage patient-related appointment data.
-- **Doctor Service** interacts with **Appointment Service** to manage doctor availability.
-- **Notification Service** sends notifications by interacting with both **Patient Service** and **Appointment Service**.
+**Technologies:**
+- Quarkus RESTEasy Reactive + Micrometer metrics
+- Kafka consumer for Appointment events
+- Prometheus + Grafana for visualization
+- Optional: Jaeger tracing integration for end‑to‑end monitoring
 
 ---
 
-## Deployment
+## 2) Architecture Overview
+**Microservice Interaction Flow:**
+1. **Patient Service** handles registration and stores user profiles.
+2. **Doctor Service** provides real‑time availability data.
+3. **Appointment Service** handles booking, emits `AppointmentCreated` events.
+4. **Notification Service** consumes those events and sends confirmations.
+5. **Analytics Service** listens to all event streams and visualizes metrics.
 
-### Containerization:
-- The entire application will be containerized using **Docker**.
-- Each microservice will be deployed independently in containers.
-
-### Kubernetes:
-- Use **Kubernetes** to orchestrate microservices, ensuring scalability and high availability.
-  
-### CI/CD:
-- Integrate with **Jenkins** or **GitLab CI/CD** for continuous integration and deployment.
+**C4 Diagram (High‑Level):**
+```mermaid
+flowchart LR
+  P[Patient Service] --> A[Appointment Service]
+  D[Doctor Service] --> A
+  A --> N[Notification Service]
+  A --> AN[Analytics Service]
+  N --> AN
+  P -->|User data| DB1[(Postgres)]
+  D --> DB2[(Postgres)]
+  A --> DB3[(Postgres)]
+  AN --> PROM[(Prometheus)] --> GRAF[(Grafana)]
+  A & N & AN --> K[(Kafka)]
+```
 
 ---
 
-## Future Enhancements
+## 3) Domain‑Driven Design (DDD)
+**Bounded Contexts:**
+- **Patient BC:** Registration, medical data, contact info.
+- **Doctor BC:** Profiles, specialties, and slot availability.
+- **Scheduling BC:** Appointment booking, rescheduling, cancellation.
+- **Notification BC:** Email/SMS delivery and event triggers.
+- **Analytics BC:** Data aggregation, dashboards, and service metrics.
 
-- **Telemedicine Integration**: Integrate a video conferencing system for remote consultations.
-- **Payment Integration**: Implement a payment gateway for appointment booking fees.
-- **Analytics**: Track appointment history and doctor availability trends for data insights.
-  
+**Domain Events:**
+- `AppointmentCreated`
+- `AppointmentCancelled`
+- `DoctorAvailabilityUpdated`
+- `NotificationSent`
+- `MetricsAggregated`
+
+**Aggregates:**
+- **Patient:** profile + contact info
+- **Doctor:** profile + availability slots
+- **Appointment:** patientId, doctorId, startTime, status
+- **Notification:** type, recipient, message, status
+- **Metrics:** appointmentCount, doctorUtilization
+
 ---
 
-## Conclusion
+## 4) Monitoring, Testing & Deployment
+**Monitoring:**
+- Prometheus collects metrics from all services via Micrometer.
+- Grafana provides dashboards for latency, throughput, and event lag.
+- Jaeger tracing captures distributed transaction spans.
 
-The Healthcare Appointment Scheduling System will streamline the appointment scheduling process, improve patient care, and enhance doctor-patient communication. By leveraging Quarkus, Hibernate, and external APIs, the system will be robust, scalable, and easy to maintain.
+**Testing:**
+- `@QuarkusTest` for REST endpoints and Panache repositories.
+- Testcontainers for Kafka and PostgreSQL.
+- Fault tolerance & retry behavior tested under simulated downtime.
+
+**Deployment:**
+- Containerized with Docker; each service has its own image.
+- Deployed via Kubernetes/Minikube for scalability and load balancing.
+- CI/CD pipeline via Jenkins or GitHub Actions.
+
+---
+
+## 5) Technology Stack
+| Category | Technology |
+|-----------|-------------|
+| Framework | Quarkus (RESTEasy Reactive, Panache ORM) |
+| Messaging | Kafka (SmallRye Reactive Messaging) |
+| Database | PostgreSQL |
+| Observability | Micrometer, Prometheus, Grafana, Jaeger |
+| Testing | QuarkusTest, RestAssured, Testcontainers |
+| Fault Tolerance | SmallRye Fault Tolerance (Retry, Circuit Breaker) |
+| API Docs | OpenAPI + Swagger UI |
+| Authentication (Optional) | OIDC/JWT via Keycloak |
+| Containerization | Docker / Podman |
+| Orchestration | Kubernetes / Minikube |
+| Scheduler | Quarkus Scheduler (for reminders) |
+| Native Build (Optional) | GraalVM |
+
+---
+
+## 6) Reactive & Self‑Healing Demo Scenario
+- **Responsiveness:** Fast API response under high traffic.
+- **Resiliency:** Appointment Service retries failed DB connections; health auto‑recovers.
+- **Elasticity:** Appointment and Notification Services scale horizontally under load.
+- **Message‑Driven:** Kafka ensures asynchronous, decoupled service communication.
+- **Self‑Healing:** Circuit breaker opens on repeated external API failures, then auto‑resets.
+
+---
+
+## 7) Conclusion
+This five‑service architecture provides a complete, production‑grade demonstration of **microservice design principles** using **Quarkus**. It meets all required course specifications, supports reactive behavior, and provides clear monitoring, testing, and deployment workflows. The new **Analytics Service** enriches observability and performance analysis, completing a robust, end‑to‑end healthcare scheduling ecosystem.
 
