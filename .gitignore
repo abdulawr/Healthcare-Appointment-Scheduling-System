@@ -1,0 +1,256 @@
+#Maven
+analytics-service/target/
+analytics-service/pom.xml.tag
+analytics-service/pom.xml.releaseBackup
+analytics-service/pom.xml.versionsBackup
+analytics-service/release.properties
+analytics-service/.flattened-pom.xml
+
+# Eclipse
+analytics-service/.project
+analytics-service/.classpath
+analytics-service/.settings/
+analytics-service/bin/
+
+# IntelliJ
+analytics-service/.idea
+analytics-service/*.ipr
+analytics-service/*.iml
+analytics-service/*.iws
+
+# NetBeans
+analytics-service/nb-configuration.xml
+
+# Visual Studio Code
+analytics-service/.vscode
+analytics-service/.factorypath
+
+# OSX
+analytics-service/.DS_Store
+
+# Vim
+analytics-service/*.swp
+analytics-service/*.swo
+
+# patch
+analytics-service/*.orig
+analytics-service/*.rej
+
+# Local environment
+analytics-service/.env
+
+# Plugin directory
+analytics-service/.quarkus/cli/plugins/
+# TLS Certificates
+analytics-service/.certs/
+
+
+
+
+
+
+
+#Maven
+appointment-service/target/
+appointment-service/pom.xml.tag
+appointment-service/pom.xml.releaseBackup
+appointment-service/pom.xml.versionsBackup
+appointment-service/release.properties
+appointment-service/.flattened-pom.xml
+
+# Eclipse
+appointment-service/.project
+appointment-service/.classpath
+appointment-service/.settings/
+appointment-service/bin/
+
+# IntelliJ
+appointment-service/.idea
+appointment-service/*.ipr
+appointment-service/*.iml
+appointment-service/*.iws
+
+# NetBeans
+appointment-service/nb-configuration.xml
+
+# Visual Studio Code
+appointment-service/.vscode
+appointment-service/.factorypath
+
+# OSX
+appointment-service/.DS_Store
+
+# Vim
+appointment-service/*.swp
+appointment-service/*.swo
+
+# patch
+appointment-service/*.orig
+appointment-service/*.rej
+
+# Local environment
+appointment-service/.env
+
+# Plugin directory
+appointment-service/.quarkus/cli/plugins/
+# TLS Certificates
+appointment-service/.certs/
+
+
+
+
+
+#Maven
+doctor-service/target/
+doctor-service/pom.xml.tag
+doctor-service/pom.xml.releaseBackup
+doctor-service/pom.xml.versionsBackup
+doctor-service/release.properties
+doctor-service/.flattened-pom.xml
+
+# Eclipse
+doctor-service/.project
+doctor-service/.classpath
+doctor-service/.settings/
+doctor-service/bin/
+
+# IntelliJ
+doctor-service/.idea
+doctor-service/*.ipr
+doctor-service/*.iml
+doctor-service/*.iws
+
+# NetBeans
+doctor-service/nb-configuration.xml
+
+# Visual Studio Code
+doctor-service/.vscode
+doctor-service/.factorypath
+
+# OSX
+doctor-service/.DS_Store
+
+# Vim
+doctor-service/*.swp
+doctor-service/*.swo
+
+# patch
+doctor-service/*.orig
+doctor-service/*.rej
+
+# Local environment
+doctor-service/.env
+
+# Plugin directory
+doctor-service/.quarkus/cli/plugins/
+# TLS Certificates
+doctor-service/.certs/
+
+
+
+
+
+
+
+
+#Maven
+notification-service/target/
+notification-service/pom.xml.tag
+notification-service/pom.xml.releaseBackup
+notification-service/pom.xml.versionsBackup
+notification-service/release.properties
+notification-service/.flattened-pom.xml
+
+# Eclipse
+notification-service/.project
+notification-service/.classpath
+notification-service/.settings/
+notification-service/bin/
+
+# IntelliJ
+notification-service/.idea
+notification-service/*.ipr
+notification-service/*.iml
+notification-service/*.iws
+
+# NetBeans
+notification-service/nb-configuration.xml
+
+# Visual Studio Code
+notification-service/.vscode
+notification-service/.factorypath
+
+# OSX
+notification-service/.DS_Store
+
+# Vim
+notification-service/*.swp
+notification-service/*.swo
+
+# patch
+notification-service/*.orig
+notification-service/*.rej
+
+# Local environment
+notification-service/.env
+
+# Plugin directory
+notification-service/.quarkus/cli/plugins/
+# TLS Certificates
+notification-service/.certs/
+
+
+
+
+
+
+
+
+
+
+
+#Maven
+patient-service/target/
+patient-service/pom.xml.tag
+patient-service/pom.xml.releaseBackup
+patient-service/pom.xml.versionsBackup
+patient-service/release.properties
+patient-service/.flattened-pom.xml
+
+# Eclipse
+patient-service/.project
+patient-service/.classpath
+patient-service/.settings/
+patient-service/bin/
+
+# IntelliJ
+patient-service/.idea
+patient-service/*.ipr
+patient-service/*.iml
+patient-service/*.iws
+
+# NetBeans
+patient-service/nb-configuration.xml
+
+# Visual Studio Code
+patient-service/.vscode
+patient-service/.factorypath
+
+# OSX
+patient-service/.DS_Store
+
+# Vim
+patient-service/*.swp
+patient-service/*.swo
+
+# patch
+patient-service/*.orig
+patient-service/*.rej
+
+# Local environment
+patient-service/.env
+
+# Plugin directory
+patient-service/.quarkus/cli/plugins/
+# TLS Certificates
+patient-service/.certs/
