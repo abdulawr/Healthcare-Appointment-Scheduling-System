@@ -208,4 +208,4 @@ flowchart LR
 This five‑service architecture provides a complete, production‑grade demonstration of **microservice design principles** using **Quarkus**. It meets all required course specifications, supports reactive behavior, and provides clear monitoring, testing, and deployment workflows. The new **Analytics Service** enriches observability and performance analysis, completing a robust, end‑to‑end healthcare scheduling ecosystem.
 
 ## Contributors
-- [Murad Akhundov](https://github.com/akhundMurad)
+<a href="https://github.com/akhundMurad"><img src="https://avatars.githubusercontent.com/u/73444365?v=4" width="60px" alt="Murad Akhundov"/></a>
