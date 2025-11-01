@@ -51,11 +51,12 @@ flowchart LR
 
 Document only externally consumed interfaces.
 
-| Method | Endpoint                        | Description                   | Scope                 | Rate Limit |
-|--------|---------------------------------|-------------------------------|-----------------------| ---------- |
-| POST   | `/appointment/schedule`         | Schedule an appoinment        | SCHEDULE_APPOINTMENT  | 1000/min   |
-| PATCH  | `/appointment/reschedule`       | Re-schedule an appoinment     | SCHEDULE_APPOINTMENT  | 1000/min   |
-| POST   | `/appointment/cancel`           | Cancel an appoinment          | CANCEL_APPOINTMENT    | 1000/min   |
+| Method | Endpoint                              | Description                                | Scope                    | Rate Limit |
+|--------|---------------------------------------|--------------------------------------------|--------------------------| ---------- |
+| POST   | `/appointment/schedule`               | Schedule an appoinment                     | SCHEDULE_APPOINTMENT     | 1000/min   |
+| PATCH  | `/appointment/reschedule`             | Re-schedule an appoinment                  | SCHEDULE_APPOINTMENT     | 1000/min   |
+| POST   | `/appointment/cancel`                 | Cancel an appoinment                       | CANCEL_APPOINTMENT       | 1000/min   |
+| GET    | `/appointment/history?participantId=` | Get appointment history of the participant | READ_PARTICIPANT_HISTORY | 1000/min   |
 
 
 ### Internal Endpoints (Service-to-Service)
