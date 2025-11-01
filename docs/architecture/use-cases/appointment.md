@@ -6,6 +6,8 @@ This service handles the following use cases:
 - Reschedule appointment
 - Cancel appointment
 
+---
+
 ## Schedule appointment
 
 ### Happy scenario
@@ -32,8 +34,8 @@ sequenceDiagram
     WorkflowHandler->>WorkflowHandler: 2. step=CREATE_APPOINTMENT
 
     activate AppointmentService
-    AppointmentService->>CalendarService: 2.1. GET /calendar/availability
-    AppointmentService->>AppointmentService: 2.2. create an appointment
+    WorkflowHandler->>AppointmentService: 2.1. POST /appointment/schedule
+    AppointmentService->>CalendarService: 2.2. GET /calendar/availability
     AppointmentService->>CalendarService: 2.3. POST /calendar/event
     CalendarService->>ExternalCalendarAPI: 2.4. create an event in external calendar (optional)
     CalendarService->>NotificationService: 2.5. POST /notification/broadcast
@@ -58,9 +60,9 @@ sequenceDiagram
 
 2. **step=CREATE_APPOINTMENT** validates availability of participants before creating an appointment and event in the calendar.
 
-    2.1. `GET /calendar/availability?participantId=patientId&participantId=doctorId&startTime=timestamp1&endTime=timestamp2`
+    2.1. Schedule an appointment and create an row in the database if validation passed.
 
-    2.2. Creates an appointment row in the database. 
+    2.2. `GET /calendar/availability?participantId=patientId&participantId=doctorId&startTime=timestamp1&endTime=timestamp2`
 
     2.3. Creates an event in the internal calendar with given parameters. 
 
@@ -88,9 +90,6 @@ sequenceDiagram
     participant AppointmentService
     participant IdentityService
     participant CalendarService
-    participant NotificationService
-    participant AnalyticsService
-    participant ExternalCalendarAPI
 
     activate WorkflowHandler
 
@@ -104,7 +103,8 @@ sequenceDiagram
     WorkflowHandler->>WorkflowHandler: 2. step=CREATE_APPOINTMENT
 
     activate AppointmentService
-    AppointmentService->>CalendarService: 2.1. GET /calendar/availability (fails)
+    WorkflowHandler->>AppointmentService: 2.1. POST /appointment/schedule
+    AppointmentService->>CalendarService: 2.2. GET /calendar/availability (fails)
     deactivate AppointmentService
 
     WorkflowHandler->>WorkflowHandler: 3. step=FAIL_SCHEDULE_APPOINTMENT_WF
