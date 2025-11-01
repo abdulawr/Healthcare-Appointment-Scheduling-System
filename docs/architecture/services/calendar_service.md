@@ -1,4 +1,4 @@
-# AppointmentService
+# CalendarService
 
 **Status:** `In Development`
 
@@ -8,13 +8,13 @@
 
 ## Overview
 
-The Appointment Service is responsible for (re-)scheduling and appointment cancellation between doctor and patient.
+The Calendar Service is responsible for managing calendar events and integration with external calendars.
 
 ### Key Responsibilities
 
-- Properly implement business logic of the use-cases (schedule, reschedule, and cancel appointment).
+- Handle full lifecycle of events (schedule, reschedule, cancel, RSVP, availability)
 - Provide a well-documented API to trigger handling of the use-cases.
-- Integrate with other services.
+- Integrate with Outlook or Google Calendar services.
 - Implement logging and monitoring to improve maintenance.
 
 ---
@@ -26,22 +26,22 @@ The Appointment Service is responsible for (re-)scheduling and appointment cance
 ```mermaid
 flowchart LR
     Client --> APIGateway
-    APIGateway --> AppointmentService
-    AppointmentService --> IdentityService
+    APIGateway --> CalendarService
     AppointmentService --> CalendarService
-    AppointmentService --> DB[(Database)]
+    CalendarService --> DB[(Database)]
+    CalendarService --> ExternalCalendarAPI
 ```
 
 ### Tech Stack
 
-| Category      | Choice                |
-| ------------- |-----------------------|
-| Language      | Java                  |
-| Framework     | Quark                 |
-| Data Storage  | PostgreSQL |
-| Messaging     | Kafka                 |
-| Deployment    | Kubernetes            |
-| Observability | Prometheus            |
+| Category      | Choice       |
+| ------------- |--------------|
+| Language      | Java         |
+| Framework     | Quark        |
+| Data Storage  | PostgreSQL   |
+| Messaging     | Kafka        |
+| Deployment    | Kubernetes   |
+| Observability | Prometheus   |
 
 ---
 
@@ -51,11 +51,12 @@ flowchart LR
 
 Document only externally consumed interfaces.
 
-| Method | Endpoint                        | Description                   | Scope                 | Rate Limit |
-|--------|---------------------------------|-------------------------------|-----------------------| ---------- |
-| POST   | `/appointment/schedule`         | Schedule an appoinment        | SCHEDULE_APPOINTMENT  | 1000/min   |
-| PATCH  | `/appointment/reschedule`       | Re-schedule an appoinment     | SCHEDULE_APPOINTMENT  | 1000/min   |
-| POST   | `/appointment/cancel`           | Cancel an appoinment          | CANCEL_APPOINTMENT    | 1000/min   |
+| Method | Endpoint                 | Description                           | Scope                   | Rate Limit |
+|--------|--------------------------|---------------------------------------|-------------------------| ---------- |
+| GET    | `/calendar/availability` | Validate availability of participants | READ_AVAILABILITY       | 1000/min   |
+| POST   | `/calendar/schedule`     | Schedule a calendar event             | SCHEDULE_CALENDAR_EVENT | 1000/min   |
+| PATCH  | `/calendar/reschedule`   | Re-schedule a calendar event          | SCHEDULE_CALENDAR_EVENT | 1000/min   |
+| POST   | `/calendar/cancel`       | Cancel a calendar event               | CANCEL_CALENDAR_EVENT   | 1000/min   |
 
 
 ### Internal Endpoints (Service-to-Service)
@@ -72,27 +73,16 @@ empty
 
 ```mermaid
 erDiagram
-    appointment {
-        uuid7 appointment_id
-        uuid7 calendar_event_id
+    calendar_event {
+        uuid7 calendar_id
         varchar title
         text description
+        timestamp starting_at
+        integer duration
+        text external_calendar_event_id
         timestamp created_at
         bool is_deleted
     }
-    participant {
-        uuid7 participant_id
-        uuid7 identity_user_id
-        timestamp created_at
-        bool is_deleted
-    }
-    appointment_participant {
-        uuid7 participant_id
-        uuid7 appointment_id
-    }
-
-    appointment_participant ||--o{ participant: participant_id
-    appointment_participant ||--o{ appointment: appointment_id
 ```
 
 ---
