@@ -80,6 +80,11 @@
             <artifactId>rest-assured</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.github.f4b6a3</groupId>
+            <artifactId>uuid-creator</artifactId>
+            <version>5.3.5</version>
+        </dependency>
     </dependencies>
 
     <build>
