@@ -5,8 +5,8 @@ import com.basit.cz.notification.model.NotificationStatus;
 import com.basit.cz.notification.novu.NovuClient;
 import com.basit.cz.notification.novu.NovuTriggerRequest;
 import com.basit.cz.notification.novu.NovuTriggerResponse;
-import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.InjectMock;
+import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
@@ -21,26 +21,28 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @QuarkusTest
-class NotificationResourceTest {
+public class NovuWebhookResourceTest {
 
     @InjectMock
     @RestClient
     NovuClient novuClient;
 
     @Test
-    void createNotification_happyPath_persistsAndMarksSent() {
-        // arrange: stub Novu to acknowledge
+    void handleWebhook_happyPath_movesToDelivered() {
+        // arrange: stub Novu to acknowledge and return a transactionId
+        String novuTxId = "novu-tx-123";
+
         NovuTriggerResponse novuResp = new NovuTriggerResponse();
         novuResp.acknowledged = true;
         novuResp.status = "processed";
-        novuResp.transactionId = "novu-tx-123";
+        novuResp.transactionId = novuTxId;
 
         when(novuClient.triggerEvent(startsWith("ApiKey "), any(NovuTriggerRequest.class)))
                 .thenReturn(novuResp);
 
-        String body = """
+        String notificationBody = """
                 {
-                  "idempotencyKey": "order-123-user-42-email",
+                  "idempotencyKey": "order-124-user-42-email",
                   "userId": "user-42",
                   "eventType": "order.shipped",
                   "locale": "en-US",
@@ -53,10 +55,10 @@ class NotificationResourceTest {
                 }
                 """;
 
-        // act: call REST endpoint
+        // act 1: create notification
         String id = given()
                 .contentType(ContentType.JSON)
-                .body(body)
+                .body(notificationBody)
                 .when()
                 .post("/notifications")
                 .then()
@@ -64,13 +66,29 @@ class NotificationResourceTest {
                 .extract()
                 .jsonPath().getString("id");
 
-        // assert: DB contains a SENT notification with that id
+        // act 2: send webhook with the SAME transactionId that we stored as novuTransactionId
+        String webhookBody = """
+            {
+              "transactionId": "%s",
+              "status": "delivered",
+              "raw": {}
+            }
+            """.formatted(novuTxId);
+
+        given()
+                .contentType(ContentType.JSON)
+                .body(webhookBody)
+                .when()
+                .post("/webhooks/novu")
+                .then()
+                .statusCode(200);
+
+        // assert
         NotificationEntity entity = findById(id);
         assertThat(entity).isNotNull();
-        assertThat(entity.status).isEqualTo(NotificationStatus.SENT);
-        assertThat(entity.novuTransactionId).isEqualTo("novu-tx-123");
+        assertThat(entity.status).isEqualTo(NotificationStatus.DELIVERED);
+        assertThat(entity.novuTransactionId).isEqualTo(novuTxId);
 
-        // verify: Novu was called exactly once
         verify(novuClient, times(1))
                 .triggerEvent(any(), any(NovuTriggerRequest.class));
     }
