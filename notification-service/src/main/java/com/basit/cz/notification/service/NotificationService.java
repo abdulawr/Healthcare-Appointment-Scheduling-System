@@ -17,6 +17,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.resteasy.reactive.ClientWebApplicationException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -36,6 +37,10 @@ public class NotificationService {
     @ConfigProperty(name = "novu.workflow.order-shipped")
     String orderShippedWorkflow; // example mapping, you can generalize
 
+    @Inject
+    JsonUtil jsonUtil;
+
+    @Transactional
     public NotificationResponse createAndSend(CreateNotificationRequest req) {
         // small wrapper to keep transactional logic separate
         NotificationEntity entity = createNotificationRecord(req);
@@ -43,7 +48,6 @@ public class NotificationService {
         return NotificationMapper.toResponse(entity);
     }
 
-    @Transactional
     protected NotificationEntity createNotificationRecord(CreateNotificationRequest req) {
         NotificationEntity existing = null;
         if (req.idempotencyKey != null && !req.idempotencyKey.isBlank()) {
@@ -68,14 +72,13 @@ public class NotificationService {
         e.channels = NotificationMapper.channelsToString(channels);
         e.status = NotificationStatus.PENDING;
         e.idempotencyKey = req.idempotencyKey;
-        e.payloadJson = JsonUtil.toJson(req.payload);
+        e.payloadJson = jsonUtil.toJson(req.payload);
         e.createdAt = OffsetDateTime.now();
         e.updatedAt = e.createdAt;
         e.persist();
         return e;
     }
 
-    @Transactional
     protected void sendToNovuAndUpdate(NotificationEntity entity, CreateNotificationRequest req) {
         try {
             String workflowName = resolveWorkflowName(entity.eventType, entity.brand);
@@ -97,19 +100,38 @@ public class NotificationService {
                     "brand", entity.brand,
                     "data", req.payload
             );
-
-            NovuTriggerResponse resp = novuClient.triggerEvent("ApiKey " + novuApiKey, novuReq);
+            Log.debugf("Calling Novu with API key prefix: %s...", novuApiKey != null ? novuApiKey.substring(0, 6) : "null");
+            NovuTriggerResponse resp =
+                    novuClient.triggerEvent("ApiKey " + novuApiKey, novuReq);
 
             entity.novuTransactionId = resp.transactionId != null ? resp.transactionId : transactionId;
-            entity.status = resp.acknowledged ? NotificationStatus.SENT : NotificationStatus.FAILED;
+            entity.status = Boolean.TRUE.equals(resp.acknowledged)
+                    ? NotificationStatus.SENT
+                    : NotificationStatus.FAILED;
             entity.updatedAt = OffsetDateTime.now();
-            entity.persist();
+
+            Log.infof("Novu response: acknowledged=%s; status=%s; tx=%s; error=%s",
+                    resp.acknowledged, resp.status, resp.transactionId, resp.error);
+
+        } catch (ClientWebApplicationException ex) {
+            String body = "";
+            try {
+                body = ex.getResponse() != null
+                        ? ex.getResponse().readEntity(String.class)
+                        : "<no body>";
+            } catch (Exception ignore) {}
+
+            Log.errorf("Novu returned error: status=%d, body=%s",
+                    ex.getResponse() != null ? ex.getResponse().getStatus() : -1,
+                    body);
+
+            entity.status = NotificationStatus.FAILED;
+            entity.updatedAt = OffsetDateTime.now();
 
         } catch (Exception ex) {
             Log.error("Failed to send notification to Novu", ex);
             entity.status = NotificationStatus.FAILED;
             entity.updatedAt = OffsetDateTime.now();
-            entity.persist();
         }
     }
 

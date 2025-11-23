@@ -33,7 +33,7 @@ public class NotificationEntity extends PanacheEntityBase {
     public String channels; // comma separated list of channels
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, columnDefinition = "notification_status")
+    @Column(name = "status", nullable = false)
     public NotificationStatus status;
 
     @Column(name = "novu_transaction_id")

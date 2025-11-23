@@ -8,14 +8,10 @@ import jakarta.inject.Inject;
 @ApplicationScoped
 public class JsonUtil {
 
-    private static ObjectMapper mapper;
-
     @Inject
-    public JsonUtil(ObjectMapper objectMapper) {
-        mapper = objectMapper;
-    }
+    ObjectMapper mapper;
 
-    public static String toJson(Object o) {
+    public String toJson(Object o) {
         if (o == null) return null;
         try {
             return mapper.writeValueAsString(o);
