@@ -1,6 +1,7 @@
 package com.basit.cz.notification.api;
 
 import com.basit.cz.notification.service.NotificationService;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -18,6 +19,7 @@ public class NotificationResource {
     NotificationService notificationService;
 
     @POST
+    @RolesAllowed("notification:write")
     public Response create(CreateNotificationRequest request) {
         NotificationResponse resp = notificationService.createAndSend(request);
         return Response.status(Response.Status.ACCEPTED).entity(resp).build();
@@ -25,6 +27,7 @@ public class NotificationResource {
 
     @GET
     @Path("/{id}")
+    @RolesAllowed("notification:read")
     public Response getById(@PathParam("id") UUID id) {
         NotificationResponse resp = notificationService.getById(id);
         if (resp == null) {
@@ -35,6 +38,7 @@ public class NotificationResource {
 
     @GET
     @Path("/by-user/{userId}")
+    @RolesAllowed("notification:read")
     public List<NotificationResponse> getByUser(@PathParam("userId") String userId,
                                                 @QueryParam("limit") @DefaultValue("50") int limit) {
         return notificationService.getByUserId(userId, limit);

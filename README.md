@@ -300,21 +300,21 @@ Send Email    Create Invoice   Track Metrics
 
 ## 5) Technology Stack
 
-| Category | Technology |
-|----------|-----------|
-| Framework | Quarkus (RESTEasy Reactive, Panache ORM) |
-| Messaging | Kafka (SmallRye Reactive Messaging) |
-| Database | PostgreSQL |
-| Observability | Micrometer, Prometheus, Grafana, Jaeger |
-| Testing | QuarkusTest, RestAssured, Testcontainers |
-| Fault Tolerance | SmallRye Fault Tolerance (Retry, Circuit Breaker) |
-| API Docs | OpenAPI + Swagger UI |
-| Authentication | OIDC/JWT via Keycloak (Optional) |
-| Containerization | Docker / Podman |
-| Orchestration | Kubernetes / Minikube |
-| Scheduler | Quarkus Scheduler (for reminders) |
-| Payment Processing | Stripe SDK, PayPal SDK |
-| Native Build | GraalVM (Optional) |
+| Category           | Technology                                        |
+|--------------------|---------------------------------------------------|
+| Framework          | Quarkus (RESTEasy Reactive, Panache ORM)          |
+| Messaging          | Kafka (SmallRye Reactive Messaging)               |
+| Database           | PostgreSQL                                        |
+| Observability      | Micrometer, Prometheus, Grafana, Jaeger           |
+| Testing            | QuarkusTest, RestAssured, Testcontainers          |
+| Fault Tolerance    | SmallRye Fault Tolerance (Retry, Circuit Breaker) |
+| API Docs           | OpenAPI + Swagger UI                              |
+| Authentication     | OIDC/JWT via Keycloak (Optional)                  |
+| Containerization   | Docker / Podman                                   |
+| Orchestration      | Kubernetes / Minikube                             |
+| Scheduler          | Quarkus Scheduler (for reminders)                 |
+| Payment Processing | Stripe SDK, PayPal SDK                            |
+| Native Build       | GraalVM (Optional)                                |
 
 ---
 

@@ -113,6 +113,8 @@ export NOVU_API_KEY="xxxxxxxxxxxxxxx"
 
 Key configuration is in `src/main/resources/application.properties`.
 
+You should export `NOTIFICATION_OIDC_CLIENT_SECRET` stored in your Keycloak Realm
+
 ### 5. Run in dev mode
 
 ```bash

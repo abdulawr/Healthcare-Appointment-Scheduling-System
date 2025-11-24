@@ -254,3 +254,6 @@ patient-service/.env
 patient-service/.quarkus/cli/plugins/
 # TLS Certificates
 patient-service/.certs/
+
+.idea/
+.oca/
