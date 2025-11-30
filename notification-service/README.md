@@ -117,21 +117,17 @@ You should export `NOTIFICATION_OIDC_CLIENT_SECRET` stored in your Keycloak Real
 
 ### 5. Run in dev mode
 
-```bash
-./mvnw quarkus:dev
-```
-
 Useful URLs:
 
-* Dev UI: `http://localhost:8080/q/dev`
-* OpenAPI: `http://localhost:8080/q/openapi`
+* Dev UI: `http://localhost:8081/q/dev`
+* OpenAPI: `http://localhost:8081/q/openapi`
 
 ---
 
 ## 📤 Sending a Test Notification
 
 ```bash
-curl -X POST http://localhost:8080/notifications \
+curl -X POST http://localhost:8081/notifications \
   -H "Content-Type: application/json" \
   -d '{
     "idempotencyKey": "order-123-user-42-email",

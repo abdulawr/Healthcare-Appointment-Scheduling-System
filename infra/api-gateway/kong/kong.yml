@@ -1,0 +1,87 @@
+_format_version: "3.0"
+_transform: true
+
+########################################################################
+# SERVICES & ROUTES
+########################################################################
+
+services:
+  # All user-facing traffic goes through oauth2-proxy
+  - name: oauth2-proxy-service
+    url: http://oauth2-proxy:4180
+    routes:
+      # User-facing NotificationService API
+      - name: notifications-route
+        paths:
+          - /notifications
+        strip_path: false
+
+      # Internal oauth2-proxy endpoints (/oauth2/login, /oauth2/callback, etc)
+      - name: oauth2-route
+        paths:
+          - /oauth2
+        strip_path: false
+
+  # Direct webhook passthrough (no oauth2-proxy, HMAC protected)
+  - name: notification-webhook-service
+    url: http://notification-service:8080
+    routes:
+      - name: novu-webhook-route
+        paths:
+          - /notifications/callbacks/novu
+        strip_path: false
+
+########################################################################
+# GLOBAL PLUGINS (CORS, rate limits, size limits)
+########################################################################
+
+plugins:
+  # CORS: adjust origins to your frontend URLs
+  - name: cors
+    config:
+      origins:
+        - http://localhost:3000
+        - http://localhost:5173
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      headers:
+        - Authorization
+        - Content-Type
+      credentials: true
+      max_age: 3600
+
+  # Basic request-size limit (in MB)
+  - name: request-size-limiting
+    config:
+      allowed_payload_size: 5
+      require_content_length: false
+
+  # Simple per-IP rate limiting, local policy works without DB
+  - name: rate-limiting
+    config:
+      minute: 60
+      policy: local
+
+  # HMAC for Novu webhooks (scoped to the webhook service/route)
+  - name: hmac-auth
+    service: notification-webhook-service
+    route: novu-webhook-route
+    config:
+      hide_credentials: true
+      clock_skew: 300   # allow some time drift
+
+########################################################################
+# CONSUMERS & HMAC CREDENTIALS (for Novu)
+########################################################################
+
+consumers:
+  - username: novu
+
+hmacauth_credentials:
+  - consumer: novu
+    username: novu
+    secret: ${NOVU_API_KEY}

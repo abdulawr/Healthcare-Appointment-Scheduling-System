@@ -13,7 +13,7 @@ import jakarta.ws.rs.core.Response;
 
 import java.time.OffsetDateTime;
 
-@Path("/webhooks/novu")
+@Path("/notifications/callbacks/novu")
 @Consumes(MediaType.APPLICATION_JSON)
 public class NovuWebhookResource {
 

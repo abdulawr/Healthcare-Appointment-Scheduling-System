@@ -79,7 +79,7 @@ public class NovuWebhookResourceTest {
                 .contentType(ContentType.JSON)
                 .body(webhookBody)
                 .when()
-                .post("/webhooks/novu")
+                .post("/notifications/callbacks/novu")
                 .then()
                 .statusCode(200);
 

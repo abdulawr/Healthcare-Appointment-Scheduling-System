@@ -51,7 +51,7 @@ This starts:
 ### **Access Keycloak**
 
 * Admin Console:
-  **[http://localhost:8089](http://localhost:8089)**
+  **[http://localhost:8080](http://localhost:8080)**
 * Health:
 * **[http://localhost:9000/health](http://localhost:9000/health)**
 * Credentials (dev only):
@@ -63,7 +63,7 @@ This starts:
 ### **Realm Discovery Endpoint**
 
 ```
-http://localhost:8089/realms/basit-cz/.well-known/openid-configuration
+http://localhost:8080/realms/basit-cz/.well-known/openid-configuration
 ```
 
 This is used by Quarkus services to validate tokens.
@@ -144,7 +144,7 @@ When running directly on your host, Keycloak is reachable via `localhost`.
 Add this to `new-service/src/main/resources/application.properties`:
 
 ```properties
-%dev.quarkus.oidc.auth-server-url=http://localhost:8089/realms/basit-cz
+%dev.quarkus.oidc.auth-server-url=http://localhost:8080/realms/basit-cz
 %dev.quarkus.oidc.client-id=new-service
 %dev.quarkus.oidc.credentials.secret=${NEW_OIDC_CLIENT_SECRET:}
 %dev.quarkus.oidc.application-type=service
@@ -169,15 +169,28 @@ TOKEN=$(curl -s \
   -d "client_id=notification-service" \
   -d "client_secret=$NOTIFICATION_OIDC_CLIENT_SECRET" \
   -d "grant_type=client_credentials" \
-  http://localhost:8089/realms/basit-cz/protocol/openid-connect/token \
+  http://localhost:8080/realms/basit-cz/protocol/openid-connect/token \
   | jq -r .access_token)
 ```
 
 Then call your service:
 
 ```bash
-curl -H "Authorization: Bearer $TOKEN" \
-     http://localhost:8080/internal/notifications
+curl -i -X POST -H "Authorization: Bearer $TOKEN" \
+     http://localhost:8000/notifications \
+    -H "Content-Type: application/json" \
+    -d '{
+      "idempotencyKey": "order-123-user-42-email",
+      "userId": "user-42",
+      "eventType": "order.shipped",
+      "locale": "en-US",
+      "brand": "default",
+      "channels": ["EMAIL"],
+      "payload": {
+        "orderId": "123",
+        "trackingUrl": "https://example.com/track/123"
+      }
+    }'
 ```
 
 ---
@@ -213,7 +226,7 @@ This ensures all developers get the exact same config.
 
 ### **“UnknownHostException: keycloak” during quarkus:dev**
 
-You’re running Quarkus *outside* Docker → use `localhost:8089` in `%dev.*` config.
+You’re running Quarkus *outside* Docker → use `localhost:8081` in `%dev.*` config.
 
 ### **Keycloak refuses to start after changing the realm**
 

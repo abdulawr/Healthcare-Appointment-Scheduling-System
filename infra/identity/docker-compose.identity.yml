@@ -9,11 +9,12 @@ services:
     volumes:
       - keycloak-db-data:/var/lib/postgresql/data
     networks:
-      - identity-net
+      - basit-network
 
   keycloak:
     image: quay.io/keycloak/keycloak:latest
     container_name: keycloak
+    hostname: identity-keycloak
     command:
       - start-dev
       - --import-realm
@@ -28,17 +29,18 @@ services:
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
     ports:
-      - "8089:8080"
+      - "8080:8080"
       - "9000:9000"
     depends_on:
       - keycloak-db
     networks:
-      - identity-net
+      - basit-network
     volumes:
       - ./keycloak:/opt/keycloak/data/import
 
 networks:
-  identity-net:
+  basit-network:
+    external: true
 
 volumes:
   keycloak-db-data:
