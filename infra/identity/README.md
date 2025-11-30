@@ -12,7 +12,7 @@ All developers get the *same exact Keycloak configuration* automatically via **r
 
 ---
 
-# 1. **Overview**
+# **Overview**
 
 Our Identity Service uses **Keycloak**, running inside Docker.
 It loads all configuration automatically from:
@@ -31,22 +31,6 @@ This JSON file contains:
 Developers do **not** have to manually configure anything in Keycloak.
 
 ---
-
-# 2. **Getting Started**
-
-### **Start Identity Service + its Postgres**
-
-From the project root:
-
-```bash
-docker compose -f infra/identity/docker-compose.identity.yml up -d;
-```
-
-This starts:
-
-* Postgres for identity service
-* Keycloak
-* Automatically imports `basit-cz` realm
 
 ### **Access Keycloak**
 
@@ -70,7 +54,7 @@ This is used by Quarkus services to validate tokens.
 
 ---
 
-# 3. **Realm Import Explained**
+# **Realm Import Explained**
 
 Keycloak loads the realm from file on startup.
 
@@ -94,73 +78,15 @@ Meaning:
 If you modify the realm file, remove the Keycloak DB volume:
 
 ```bash
-docker compose -f infra/identity/docker-compose.identity.yml down -v
-docker compose -f infra/identity/docker-compose.identity.yml up -d
+docker-compose -f infra/identity/docker-compose.identity.yml down -v
+make identity-up
 ```
 
 This forces a fresh import.
 
 ---
 
-# 4. **Clients & Secrets**
-
-### **Client ID is NOT a secret**
-
-Safe to commit:
-
-```
-notification-service
-frontend-app
-```
-
-### **Client Secret IS secret**
-
-For dev only you may include it in the JSON,
-but services should still read it from **environment variables**:
-
-Example for `notification-service`:
-
-```bash
-export NOTIFICATION_OIDC_CLIENT_SECRET=<client-secret>
-```
-
-Or in Docker Compose:
-
-```yaml
-environment:
-  QUARKUS_OIDC_CREDENTIALS_SECRET: ${NOTIFICATION_OIDC_SECRET}
-```
-
-Place secrets in a `.env` file that is **gitignored** or in the Intellij IDEA configuration.
-
----
-
-# 5. **New Service Configuration**
-
-### **Dev mode (`quarkus:dev`)**
-
-When running directly on your host, Keycloak is reachable via `localhost`.
-
-Add this to `new-service/src/main/resources/application.properties`:
-
-```properties
-%dev.quarkus.oidc.auth-server-url=http://localhost:8080/realms/basit-cz
-%dev.quarkus.oidc.client-id=new-service
-%dev.quarkus.oidc.credentials.secret=${NEW_OIDC_CLIENT_SECRET:}
-%dev.quarkus.oidc.application-type=service
-%dev.quarkus.oidc.roles.role-claim-path=realm_access/roles
-```
-
-Run a new service:
-
-```bash
-export NEW_OIDC_CLIENT_SECRET=<secret>
-./mvnw quarkus:dev
-```
-
----
-
-# 6. **Getting an Access Token (Client Credentials)**
+# **Getting an Access Token (Client Credentials)**
 
 This is useful for testing protected endpoints.
 
@@ -195,7 +121,7 @@ curl -i -X POST -H "Authorization: Bearer $TOKEN" \
 
 ---
 
-# 7. **Updating the Realm Configuration**
+# **Updating the Realm Configuration**
 
 If you make changes in Admin Console (add roles, clients, mappers, etc.):
 
@@ -215,14 +141,14 @@ infra/identity/keycloak/basit-cz-realm.json
 
 ```bash
 docker compose -f infra/identity/docker-compose.identity.ym down -v
-docker compose -f infra/identity/docker-compose.identity.ym up -d
+make identity-up
 ```
 
 This ensures all developers get the exact same config.
 
 ---
 
-# 8. **Troubleshooting**
+# **Troubleshooting**
 
 ### **“UnknownHostException: keycloak” during quarkus:dev**
 
@@ -250,7 +176,7 @@ Usually the token was issued for the wrong client or wrong realm.
 
 ---
 
-# 9. Summary
+# Summary
 
 * Identity Service uses **Keycloak + Postgres**, managed through Docker.
 * Realm configuration is stored in Git and automatically imported.

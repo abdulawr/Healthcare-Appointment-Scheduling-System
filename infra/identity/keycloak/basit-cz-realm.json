@@ -536,6 +536,24 @@
   "webAuthnPolicyPasswordlessExtraOrigins": [],
   "users": [
     {
+      "id": "81dff462-f28c-4c4a-9ab9-ccf10ced001f",
+      "username": "service-account-api-gateway",
+      "emailVerified": false,
+      "enabled": true,
+      "createdTimestamp": 1764470582386,
+      "totp": false,
+      "serviceAccountClientId": "api-gateway",
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": [
+        "default-roles-basit-cz"
+      ],
+      "notBefore": 0,
+      "groups": [
+        "/users"
+      ]
+    },
+    {
       "id": "c6e8747d-7bee-423b-9fd8-899de50ff738",
       "username": "service-account-notification-service",
       "emailVerified": false,
@@ -748,7 +766,7 @@
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
+      "serviceAccountsEnabled": true,
       "publicClient": false,
       "frontchannelLogout": true,
       "protocol": "openid-connect",
@@ -759,7 +777,9 @@
         "backchannel.logout.session.required": "true",
         "standard.token.exchange.enabled": "false",
         "post.logout.redirect.uris": "+",
+        "frontchannel.logout.session.required": "true",
         "oauth2.device.authorization.grant.enabled": "false",
+        "display.on.consent.screen": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
         "dpop.bound.access.tokens": "false"
       },
@@ -774,29 +794,17 @@
           "protocolMapper": "oidc-audience-mapper",
           "consentRequired": false,
           "config": {
+            "included.client.audience": "api-gateway",
             "id.token.claim": "true",
             "lightweight.claim": "false",
-            "access.token.claim": "true",
             "introspection.token.claim": "true",
-            "userinfo.token.claim": "true"
-          }
-        },
-        {
-          "id": "ccad6fd1-3973-4346-90c1-bf3c0f754813",
-          "name": "notification-service-audience",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
-          "consentRequired": false,
-          "config": {
-            "id.token.claim": "true",
-            "lightweight.claim": "false",
             "access.token.claim": "true",
-            "introspection.token.claim": "true",
             "userinfo.token.claim": "true"
           }
         }
       ],
       "defaultClientScopes": [
+        "service_account",
         "web-origins",
         "acr",
         "roles",

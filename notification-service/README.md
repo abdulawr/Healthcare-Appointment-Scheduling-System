@@ -72,50 +72,18 @@ flowchart LR
 
 ## 🚀 Getting Started
 
-### 1. Clone the repository
+### Clone the repository
 
 ```bash
 git clone <YOUR_REPO_URL>.git
 cd notification-service
 ```
 
-### 2. Start infrastructure (PostgreSQL, Kafka optional)
+### Start infrastructure (PostgreSQL, Kafka optional)
 
-If you have a `docker-compose.yml` at repo root:
+Refer to `infra/README.md`
 
-```bash
-docker compose up -d
-```
-
-At minimum you need **PostgreSQL** running with:
-
-* DB: `notification`
-* User: `notification`
-* Password: `notification`
-* Port: `5432`
-
-### 3. Configure Novu API key
-
-In Novu Console:
-
-* Go to **Project Settings → API Keys**
-* Copy the **Secret Key** (not the Application Identifier)
-
-Set it as environment variable:
-
-```bash
-export NOVU_API_KEY="xxxxxxxxxxxxxxx"
-```
-
-(or set it in your IDE run configuration)
-
-### 4. Application configuration
-
-Key configuration is in `src/main/resources/application.properties`.
-
-You should export `NOTIFICATION_OIDC_CLIENT_SECRET` stored in your Keycloak Realm
-
-### 5. Run in dev mode
+### Run in dev mode
 
 Useful URLs:
 

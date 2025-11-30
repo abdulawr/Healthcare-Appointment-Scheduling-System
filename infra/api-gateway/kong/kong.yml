@@ -32,7 +32,7 @@ services:
         strip_path: false
 
 ########################################################################
-# GLOBAL PLUGINS (CORS, rate limits, size limits)
+# GLOBAL PLUGINS
 ########################################################################
 
 plugins:
@@ -84,4 +84,4 @@ consumers:
 hmacauth_credentials:
   - consumer: novu
     username: novu
-    secret: ${NOVU_API_KEY}
+    secret: ${NOVU_HMAC_SECRET}

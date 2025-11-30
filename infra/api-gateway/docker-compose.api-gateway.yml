@@ -1,12 +1,10 @@
-version: "3.9"
-
 services:
   kong:
     image: kong:3.7
     container_name: api-gateway
     restart: unless-stopped
     environment:
-      KONG_DATABASE: "off"                     # DB-less mode :contentReference[oaicite:0]{index=0}
+      KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /config/kong.yml
       KONG_PROXY_LISTEN: "0.0.0.0:8000"
       KONG_ADMIN_LISTEN: "0.0.0.0:8001"
@@ -14,8 +12,8 @@ services:
     volumes:
       - ./kong/kong.yml:/config/kong.yml:ro
     ports:
-      - "8000:8000"   # public gateway
-      - "8001:8001"   # admin API (dev only)
+      - "8000:8000"
+      - "8001:8001"
     depends_on:
       - oauth2-proxy
     networks:
@@ -26,40 +24,31 @@ services:
     container_name: oauth2-proxy
     restart: unless-stopped
     environment:
-      # Provider & Keycloak OIDC settings
       - OAUTH2_PROXY_PROVIDER=keycloak-oidc
-      - OAUTH2_PROXY_OIDC_ISSUER_URL=http://identity-keycloak:8080/realms/basit-cz
+      - OAUTH2_PROXY_OIDC_ISSUER_URL=${OIDC_ISSUER_INTERNAL}
 
-      # Client configured in Keycloak
-      - OAUTH2_PROXY_CLIENT_ID=api-gateway
+      - OAUTH2_PROXY_CLIENT_ID=${OAUTH2_PROXY_CLIENT_ID}
       - OAUTH2_PROXY_CLIENT_SECRET=${OAUTH2_PROXY_CLIENT_SECRET}
 
-      # Cookie secret: 32-byte base64
       - OAUTH2_PROXY_COOKIE_SECRET=${OAUTH2_PROXY_COOKIE_SECRET}
-
-      # What emails are allowed – dev: allow all
       - OAUTH2_PROXY_EMAIL_DOMAINS=*
 
-      # Upstream: NotificationService inside Docker
       - OAUTH2_PROXY_UPSTREAMS=http://notification-service:8080
-
-      # Listener
       - OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:4180
 
-      # Typical reverse-proxy settings
       - OAUTH2_PROXY_REVERSE_PROXY=true
       - OAUTH2_PROXY_PASS_ACCESS_TOKEN=true
       - OAUTH2_PROXY_SET_AUTHORIZATION_HEADER=true
       - OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER=true
+      - OAUTH2_PROXY_SKIP_AUTH_PRE_FLIGHT=true
       - OAUTH2_PROXY_SKIP_PROVIDER_BUTTON=true
-      - OAUTH2_PROXY_COOKIE_SECURE=false           # dev (HTTP)
+      - OAUTH2_PROXY_COOKIE_SECURE=false
       - OAUTH2_PROXY_COOKIE_SAMESITE=lax
 
       - OAUTH2_PROXY_SKIP_JWT_BEARER_TOKENS=true
-      - OAUTH2_PROXY_EXTRA_JWT_ISSUERS=http://identity-keycloak:8080/realms/basit-cz=api-gateway
+      - OAUTH2_PROXY_EXTRA_JWT_ISSUERS=${OIDC_ISSUER_INTERNAL}=api-gateway
       - OAUTH2_PROXY_INSECURE_OIDC_ALLOW_UNVERIFIED_EMAIL=true
 
-      # Redirect URL (what Keycloak redirects back to)
       - OAUTH2_PROXY_REDIRECT_URL=http://localhost:8000/oauth2/callback
 
     networks:
