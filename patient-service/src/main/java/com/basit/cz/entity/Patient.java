@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "patients")
@@ -36,6 +37,15 @@ public class Patient extends PanacheEntity {
     @Column(nullable = false)
     public Gender gender = Gender.OTHER;
 
+    @Column(length = 500)
+    public String address;
+
+    @Column(name = "emergency_contact_name", length = 100)
+    public String emergencyContactName;
+
+    @Column(name = "emergency_contact_phone", length = 20)
+    public String emergencyContactPhone;
+
     @Column(name = "is_active", nullable = false)
     public Boolean isActive = true;
 
@@ -44,6 +54,16 @@ public class Patient extends PanacheEntity {
 
     @Column(name = "updated_at")
     public LocalDateTime updatedAt;
+
+    // Relationships
+    @OneToOne(mappedBy = "patient", cascade = CascadeType.ALL, orphanRemoval = true)
+    public Insurance insurance;
+
+    @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL, orphanRemoval = true)
+    public List<MedicalRecord> medicalRecords = new java.util.ArrayList<>();
+
+    @OneToOne(mappedBy = "patient", cascade = CascadeType.ALL, orphanRemoval = true)
+    public CommunicationPreference communicationPreference;
 
     public enum Gender {
         MALE, FEMALE, OTHER
@@ -73,6 +93,9 @@ public class Patient extends PanacheEntity {
                 '}';
     }
 }
+
+
+
 
 
 
