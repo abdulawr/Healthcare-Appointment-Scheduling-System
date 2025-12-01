@@ -1,14 +1,29 @@
 version: '3.8'
 
+# =====================================================
+# Healthcare Patient Service - Docker Compose
+# =====================================================
+# This docker-compose file starts:
+#   1. PostgreSQL with pre-initialized data
+#   2. Patient Service application
+#   3. Adminer (Database UI)
+# =====================================================
+
 services:
-  # PostgreSQL Database
+  # ===================================================
+  # PostgreSQL Database with Custom Image
+  # ===================================================
   postgres:
-    image: postgres:15-alpine
+    build:
+      context: ./docker/postgres
+      dockerfile: Dockerfile
+    image: patient-service-postgres:latest
     container_name: patient-service-db
     environment:
       POSTGRES_DB: patient_db
       POSTGRES_USER: patient_user
       POSTGRES_PASSWORD: patient_pass
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
     ports:
       - "5432:5432"
     volumes:
@@ -20,19 +35,35 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    restart: unless-stopped
 
+  # ===================================================
   # Patient Service Application
+  # ===================================================
   patient-service:
     build:
       context: .
       dockerfile: src/main/docker/Dockerfile.jvm
+    image: patient-service:latest
     container_name: patient-service-app
     environment:
+      # Database connection
       QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://postgres:5432/patient_db
       QUARKUS_DATASOURCE_USERNAME: patient_user
       QUARKUS_DATASOURCE_PASSWORD: patient_pass
+
+      # Application settings
       QUARKUS_HTTP_PORT: 8081
+      QUARKUS_APPLICATION_NAME: patient-service
+
+      # Hibernate settings (use 'update' to preserve data)
       QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: update
+      QUARKUS_HIBERNATE_ORM_LOG_SQL: "true"
+
+      # Logging
+      QUARKUS_LOG_LEVEL: INFO
+      QUARKUS_LOG_CATEGORY_COM_HEALTHCARE_LEVEL: DEBUG
     ports:
       - "8081:8081"
     depends_on:
@@ -46,8 +77,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    restart: unless-stopped
 
-  # Adminer - Database Management UI (Optional)
+  # ===================================================
+  # Adminer - Database Management UI
+  # ===================================================
   adminer:
     image: adminer:latest
     container_name: patient-service-adminer
@@ -59,11 +93,21 @@ services:
       - patient-network
     environment:
       ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: "pepa-linha"
+    restart: unless-stopped
 
+# =====================================================
+# Volumes
+# =====================================================
 volumes:
   postgres_data:
     driver: local
+    name: patient_service_postgres_data
 
+# =====================================================
+# Networks
+# =====================================================
 networks:
   patient-network:
     driver: bridge
+    name: patient_service_network
