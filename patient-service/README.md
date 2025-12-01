@@ -14,22 +14,7 @@ A production-ready microservice for managing patient information in a healthcare
 
 ---
 
-## 📚 Table of Contents
 
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Database Design](#database-design)
-- [API Endpoints](#api-endpoints)
-- [Getting Started](#getting-started)
-- [Running with Docker](#running-with-docker)
-- [Running Locally](#running-locally)
-- [Testing](#testing)
-- [Technology Stack](#technology-stack)
-- [Project Structure](#project-structure)
-- [Documentation](#documentation)
-
----
 
 ## 🎯 Overview
 
@@ -46,48 +31,6 @@ The **Patient Service** is a core microservice in the Healthcare Appointment Sch
 ### Project Context
 
 Developed as a university project at **Masaryk University** in the Software System Development course, demonstrating microservice architecture, RESTful API design, database modeling, and DevOps practices.
-
----
-
-## ✨ Features
-
-### 🧑‍⚕️ Patient Management
-- ✅ **Patient Registration** - Complete onboarding with validation
-- ✅ **Profile Management** - Update personal information
-- ✅ **Soft Delete** - Deactivate accounts with data retention
-- ✅ **Search** - Find patients by name (case-insensitive)
-- ✅ **Emergency Contacts** - Store emergency contact information
-- ✅ **Active Status** - Track active/inactive patients
-
-### 🏥 Medical Information
-- ✅ **Medical History** - Comprehensive medical record tracking
-- ✅ **10 Record Types** - Allergies, surgeries, medications, vaccinations, lab results, diagnoses, treatments, consultations, chronic conditions
-- ✅ **Doctor Notes** - Track consultations and prescriptions
-- ✅ **Hospital Records** - Link to healthcare facilities
-- ✅ **Chronological Tracking** - Date-based record organization
-
-### 🛡️ Insurance Management
-- ✅ **Policy Information** - Complete insurance details
-- ✅ **Coverage Validation** - Check active coverage status
-- ✅ **Policy Holder Tracking** - SELF, SPOUSE, PARENT, CHILD, OTHER
-- ✅ **Financial Details** - Copay and deductible amounts
-- ✅ **Coverage Dates** - Start and end date validation
-
-### 📱 Communication Preferences
-- ✅ **Multi-Channel Notifications** - Email, SMS, Push notifications
-- ✅ **Appointment Reminders** - Configurable timing (hours before)
-- ✅ **Language Support** - English, Czech, Spanish, French, German
-- ✅ **Contact Method** - Preferred communication channel
-- ✅ **Marketing Opt-in/out** - GDPR compliant
-- ✅ **Customizable Settings** - Per-patient preferences
-
-### 🔒 Data Quality & Security
-- ✅ **Email Uniqueness** - Prevent duplicate registrations
-- ✅ **Bean Validation** - Input validation on all endpoints
-- ✅ **Error Handling** - Proper HTTP status codes
-- ✅ **Foreign Key Constraints** - Data integrity
-- ✅ **Cascade Operations** - Automatic cleanup
-- ✅ **Indexed Queries** - Performance optimization
 
 ---
 
