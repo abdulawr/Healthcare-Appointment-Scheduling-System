@@ -2,6 +2,8 @@ package com.basit.cz.repository;
 
 import com.basit.cz.entity.Doctor;
 import com.basit.cz.entity.DoctorAvailability;
+import com.basit.cz.entity.DoctorReview;
+import com.basit.cz.entity.DoctorSchedule;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -51,7 +53,10 @@ public class DoctorRepositoryTest {
     @BeforeEach
     @Transactional
     public void setup() {
-        // Clean all data
+        // Clean all data - DELETE CHILDREN FIRST to avoid FK constraint violations
+        DoctorReview.deleteAll();
+        DoctorAvailability.deleteAll();
+        DoctorSchedule.deleteAll();
         Doctor.deleteAll();
 
         // Create test doctors
@@ -393,6 +398,9 @@ public class DoctorRepositoryTest {
         d5.persist();
     }
 }
+
+
+
 
 
 

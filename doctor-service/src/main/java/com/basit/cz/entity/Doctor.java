@@ -154,8 +154,3 @@ public class Doctor extends PanacheEntity {
         this.isActive = true;
     }
 }
-
-
-
-
-

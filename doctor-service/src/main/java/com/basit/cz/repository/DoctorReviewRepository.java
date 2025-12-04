@@ -1,6 +1,6 @@
 package com.basit.cz.repository;
 
-import com.healthcare.doctor.entity.DoctorReview;
+import com.basit.cz.entity.DoctorReview;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
@@ -48,8 +48,7 @@ public class DoctorReviewRepository implements PanacheRepository<DoctorReview> {
      * @return List of reviews with this rating
      */
     public List<DoctorReview> findByDoctorAndRating(Long doctorId, int rating) {
-        return list("doctor.id = ?1 AND rating = ?2 ORDER BY createdAt DESC",
-                doctorId, rating);
+        return list("doctor.id = ?1 AND rating = ?2 ORDER BY createdAt DESC", doctorId, rating);
     }
 
     /**
