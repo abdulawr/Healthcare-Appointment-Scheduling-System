@@ -1,13 +1,3 @@
-# Makefile for infra/
-#
-# Usage examples:
-#   make identity-up
-#   make identity-down
-#   make notification-up
-#   make gateway-up
-#   make start-all
-#   make stop-all
-
 INFRA_DIR := $(CURDIR)
 ENV_FILE  := $(INFRA_DIR)/.env
 NETWORK   := basit-network
@@ -15,11 +5,13 @@ NETWORK   := basit-network
 COMPOSE_IDENTITY    := docker-compose --env-file $(ENV_FILE) -f identity/docker-compose.identity.yml
 COMPOSE_NOTIFICATION := docker-compose --env-file $(ENV_FILE) -f notification/docker-compose.notification.yml
 COMPOSE_GATEWAY     := docker-compose --env-file $(ENV_FILE) -f api-gateway/docker-compose.api-gateway.yml
+COMPOSE_DOCTOR     := docker-compose --env-file $(ENV_FILE) -f doctor/docker-compose.doctor.yml
 
 .PHONY: help network-create network-remove \
         identity-up identity-down identity-logs \
         notification-up notification-down notification-logs \
         gateway-up gateway-down gateway-logs \
+        doctor-up doctor-down doctor-logs \
         start-all stop-all logs-all
 
 help:
@@ -39,7 +31,11 @@ help:
 	@echo "  gateway-down            Stop API Gateway"
 	@echo "  gateway-logs            Follow Kong logs"
 	@echo
-	@echo "  start-all               Start identity, notification, and gateway"
+	@echo "  doctor-up              Start Doctor Service stack"
+	@echo "  doctor-down            Stop Doctor Service stack"
+	@echo "  doctor-logs            Follow Doctor Service logs"
+	@echo
+	@echo "  start-all               Start all services"
 	@echo "  stop-all                Stop all infra stacks"
 	@echo "  logs-all                Tail logs for main services"
 
@@ -73,6 +69,17 @@ notification-down:
 notification-logs:
 	$(COMPOSE_NOTIFICATION) logs -f notification-service
 
+# --- Doctor stack ---
+
+doctor-up: network-create
+	$(COMPOSE_DOCTOR) up -d
+
+doctor-down:
+	$(COMPOSE_DOCTOR) down
+
+doctor-logs:
+	$(COMPOSE_DOCTOR) logs -f doctor-service
+
 # --- API Gateway (Kong + oauth2-proxy) ---
 
 gateway-up: network-create
@@ -86,9 +93,9 @@ gateway-logs:
 
 # --- Convenience targets ---
 
-start-all: identity-up notification-up gateway-up
+start-all: identity-up notification-up doctor-up gateway-up
 
-stop-all: gateway-down notification-down identity-down
+stop-all: gateway-down notification-down doctor-down identity-down
 
 logs-all:
 	@echo "=== Identity logs ==="
@@ -99,3 +106,6 @@ logs-all:
 	@echo
 	@echo "=== Gateway logs ==="
 	$(COMPOSE_GATEWAY) logs --tail=50 kong
+	@echo
+	@echo "=== Doctor logs ==="
+	$(COMPOSE_DOCTOR) logs --tail=50 doctor-service

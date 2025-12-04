@@ -25,6 +25,7 @@ All modules are designed for local development and can be run independently or t
 infra/
 ├── api-gateway/         # Kong + oauth2-proxy configuration and declarative routes
 ├── identity/            # Keycloak + Postgres with imported realm
+├── doctor/              # DoctorService stack: service container + Postgres
 └── notification/        # NotificationService stack: Kafka + Zookeeper + Postgres + service container
 
 ````
@@ -59,7 +60,7 @@ Some services require secrets. Setup environment variables:
 
    2.1. Generate OAUTH2_PROXY_COOKIE_SECRET: `openssl rand -base64 32 | tr -- "+/" "-_"`
 
-   2.2. Get `OAUTH2_PROXY_CLIENT_SECRET` and `NOTIFICATION_OIDC_CLIENT_SECRET` from the Keycloak Admin Panel.
+   2.2. Get `OAUTH2_PROXY_CLIENT_SECRET` and `<service_name>_OIDC_CLIENT_SECRET` from the Keycloak Admin Panel.
 
    2.3. Get `NOVU_API_KEY` from the Novu admin panel.
 
@@ -93,7 +94,14 @@ Although each stack can be run individually, the typical order is:
    make notification-up
    ```
 
-4. **API Gateway**
+4. **Doctor stack**
+   Runs Postgres, Kafka, and DoctorService.
+
+   ```bash
+   make doctor-up
+   ```
+
+5**API Gateway**
    Routes public traffic and enforces authentication.
 
    ```bash
@@ -109,7 +117,9 @@ Inside the `basit-network`, services talk via hostnames:
 * **Keycloak:** `identity-keycloak:8080`
 * **NotificationService:** `notification-service:8080`
 * **Kafka:** `notification-kafka:9092`
-* **Postgres:** `notification-postgres:5432`
+* **Notification DB:** `notification-postgres:5432`
+* **DoctorService:** `doctor-service:8082`
+* **Doctor DB:** `doctor-postgres:5433`
 * **Kong:** `api-gateway:8000`
 * **oauth2-proxy:** `oauth2-proxy:4180`
 

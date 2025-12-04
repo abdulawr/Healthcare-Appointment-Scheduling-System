@@ -138,29 +138,29 @@ http://localhost:8082/api/doctors
 
 ### Endpoints Summary
 
-| Method | Endpoint | Description | Status Codes |
-|--------|----------|-------------|--------------|
+| Method                  | Endpoint                 | Description               | Status Codes     |
+|-------------------------|--------------------------|---------------------------|------------------|
 | **Registration & CRUD** |
-| POST | `/register` | Register new doctor | 201, 400 |
-| GET | `/{id}` | Get doctor by ID | 200, 404 |
-| PUT | `/{id}` | Update doctor | 200, 404, 400 |
-| DELETE | `/{id}` | Deactivate doctor | 204, 404 |
-| **Listing & Search** |
-| GET | `/` | Get all active doctors | 200 |
-| GET | `/search?q={query}` | Search by name | 200, 400 |
-| **Filtering** |
-| GET | `/specialization/{spec}` | Filter by specialization | 200 |
-| GET | `/top-rated` | Get top-rated (≥4.0) | 200 |
-| GET | `/rating/{rating}` | Filter by minimum rating | 200 |
-| GET | `/experience/{years}` | Filter by experience | 200 |
-| GET | `/available/{day}` | Filter by availability | 200, 400 |
-| GET | `/fee-range?min=X&max=Y` | Filter by fee range | 200, 400 |
-| **Utilities** |
-| GET | `/specializations` | List all specializations | 200 |
-| GET | `/statistics` | Get statistics | 200 |
-| **Account Management** |
-| POST | `/{id}/activate` | Activate doctor account | 204, 404 |
-| POST | `/{id}/deactivate` | Deactivate doctor account | 204, 404 |
+| POST                    | `/register`              | Register new doctor       | 201, 400         |
+| GET                     | `/{id}`                  | Get doctor by ID          | 200, 404         |
+| PUT                     | `/{id}`                  | Update doctor             | 200, 404, 400    |
+| DELETE                  | `/{id}`                  | Deactivate doctor         | 204, 404         |
+| **Listing & Search**    |
+| GET                     | `/`                      | Get all active doctors    | 200              |
+| GET                     | `/search?q={query}`      | Search by name            | 200, 400         |
+| **Filtering**           |
+| GET                     | `/specialization/{spec}` | Filter by specialization  | 200              |
+| GET                     | `/top-rated`             | Get top-rated (≥4.0)      | 200              |
+| GET                     | `/rating/{rating}`       | Filter by minimum rating  | 200              |
+| GET                     | `/experience/{years}`    | Filter by experience      | 200              |
+| GET                     | `/available/{day}`       | Filter by availability    | 200, 400         |
+| GET                     | `/fee-range?min=X&max=Y` | Filter by fee range       | 200, 400         |
+| **Utilities**           |
+| GET                     | `/specializations`       | List all specializations  | 200              |
+| GET                     | `/statistics`            | Get statistics            | 200              |
+| **Account Management**  |
+| POST                    | `/{id}/activate`         | Activate doctor account   | 204, 404         |
+| POST                    | `/{id}/deactivate`       | Deactivate doctor account | 204, 404         |
 
 ### Request/Response Examples
 
@@ -337,59 +337,29 @@ GET /api/doctors/statistics
 
 ### Installation
 
-#### Option 1: Local Development (with Docker PostgreSQL)
+#### Option 1: Full Docker Deployment
 
 1. **Clone the repository**
 ```bash
 git clone <repository-url>
-cd doctor-service
-```
-
-2. **Start PostgreSQL**
-```bash
-docker run -d \
-  --name doctor-db \
-  -e POSTGRES_DB=doctordb \
-  -e POSTGRES_USER=doctor_user \
-  -e POSTGRES_PASSWORD=doctor_pass \
-  -p 5432:5432 \
-  postgres:15-alpine
-```
-
-3. **Run the application**
-```bash
-mvn quarkus:dev
-```
-
-4. **Access the application**
-- API: http://localhost:8082/api/doctors
-- Swagger UI: http://localhost:8082/q/swagger-ui
-- Health Check: http://localhost:8082/q/health
-
-#### Option 2: Full Docker Deployment
-
-1. **Clone the repository**
-```bash
-git clone <repository-url>
-cd doctor-service
+cd infra
 ```
 
 2. **Build and start all services**
 ```bash
-docker-compose up --build -d
+make start-all
 ```
 
 3. **Verify services are running**
 ```bash
-docker-compose ps
+make logs-all
 ```
 
 4. **Access the application**
 - API: http://localhost:8082/api/doctors
 - Swagger UI: http://localhost:8082/q/swagger-ui
-- pgAdmin: http://localhost:5050 (admin@hospital.com / admin)
 
-#### Option 3: Local Development (Native PostgreSQL)
+#### Option 2: Local Development (Native PostgreSQL)
 
 1. **Install PostgreSQL 15**
 
@@ -481,23 +451,19 @@ export QUARKUS_HTTP_PORT=8082
 export QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=update
 ```
 
-### Docker Environment
-
-See `docker-compose.yml` for Docker-specific configuration.
-
 ---
 
 ## 🧪 Testing
 
 ### Test Coverage
 
-| Layer | Tests | Coverage |
-|-------|-------|----------|
-| Entity | 10 | ~95% |
-| Repository | 16 | ~90% |
-| REST API | 25 | ~85% |
-| Integration | 5 | ~80% |
-| **Total** | **56** | **~90%** |
+| Layer       | Tests  | Coverage  |
+|-------------|--------|-----------|
+| Entity      | 10     | ~95%      |
+| Repository  | 16     | ~90%      |
+| REST API    | 25     | ~85%      |
+| Integration | 5      | ~80%      |
+| **Total**   | **56** | **~90%**  |
 
 ### Running Tests
 
@@ -567,69 +533,6 @@ src/test/java/com/healthcare/doctor/
 
 ---
 
-## 🐳 Docker Deployment
-
-### Docker Compose Services
-
-The application uses Docker Compose with 3 services:
-
-1. **doctor-service** - The Quarkus application
-2. **postgres** - PostgreSQL database
-3. **pgadmin** - Database management UI (optional)
-
-### Quick Start
-
-```bash
-# Build and start
-docker-compose up --build -d
-
-# View logs
-docker-compose logs -f doctor-service
-
-# Stop services
-docker-compose down
-
-# Stop and remove volumes
-docker-compose down -v
-```
-
-### Using Helper Script
-
-```bash
-# Make executable
-chmod +x docker-run.sh
-
-# Build images
-./docker-run.sh build
-
-# Start services
-./docker-run.sh up
-
-# View logs
-./docker-run.sh logs-app
-
-# Stop services
-./docker-run.sh down
-
-# Clean everything
-./docker-run.sh clean
-```
-
-### Available Commands
-
-| Command | Description |
-|---------|-------------|
-| `build` | Build Docker images |
-| `up` | Start all services |
-| `down` | Stop all services |
-| `restart` | Restart all services |
-| `logs` | Show all logs |
-| `logs-app` | Show app logs only |
-| `logs-db` | Show database logs |
-| `status` | Show service status |
-| `clean` | Remove containers & volumes |
-| `psql` | Connect to database |
-
 ### Accessing Services
 
 Once running:
@@ -637,21 +540,6 @@ Once running:
 - **Swagger UI**: http://localhost:8082/q/swagger-ui
 - **Health**: http://localhost:8082/q/health
 - **Metrics**: http://localhost:8082/q/metrics
-- **pgAdmin**: http://localhost:5050
-    - Email: `admin@hospital.com`
-    - Password: `admin`
-
-### Database Connection (pgAdmin)
-
-1. Open http://localhost:5050
-2. Login with credentials above
-3. Add server:
-    - Name: `Doctor Service DB`
-    - Host: `postgres`
-    - Port: `5432`
-    - Database: `doctordb`
-    - Username: `doctor_user`
-    - Password: `doctor_pass`
 
 ---
 
@@ -840,13 +728,13 @@ doctor-service/
 
 ### Benchmarks
 
-| Metric | Value |
-|--------|-------|
-| Startup Time | ~3 seconds (dev mode) |
-| Memory Usage | ~150 MB (runtime) |
-| Request Latency | <10ms (average) |
-| Throughput | 1000+ req/sec |
-| Database Connections | 10 (pool size) |
+| Metric               | Value                 |
+|----------------------|-----------------------|
+| Startup Time         | ~3 seconds (dev mode) |
+| Memory Usage         | ~150 MB (runtime)     |
+| Request Latency      | <10ms (average)       |
+| Throughput           | 1000+ req/sec         |
+| Database Connections | 10 (pool size)        |
 
 ### Optimization Tips
 
