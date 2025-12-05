@@ -113,6 +113,12 @@
             <version>3.24.2</version>
             <scope>test</scope>
         </dependency>
+        <!-- In-memory messaging for tests -->
+        <dependency>
+            <groupId>io.smallrye.reactive</groupId>
+            <artifactId>smallrye-reactive-messaging-in-memory</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

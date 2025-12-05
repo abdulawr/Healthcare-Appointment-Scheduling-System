@@ -4,19 +4,26 @@ import com.example.constant.AppointmentStatus;
 import com.example.dto.AppointmentResponse;
 import com.example.dto.CreateAppointmentRequest;
 import com.example.entity.Appointment;
+import com.example.event.*;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * Implementation of AppointmentService with all business logic.
+ * Emits events for all state changes.
  */
 @ApplicationScoped
 public class AppointmentServiceImpl implements AppointmentService {
+
+    @Inject
+    AppointmentEventProducer eventProducer;
 
     @Override
     @Transactional
@@ -45,6 +52,18 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         // Persist
         appointment.persist();
+
+        // Publish event
+        AppointmentCreatedEvent event = new AppointmentCreatedEvent(
+                appointment.id,
+                appointment.patientId,
+                appointment.doctorId,
+                appointment.startTime,
+                appointment.endTime,
+                appointment.type,
+                appointment.reason
+        );
+        eventProducer.publishCreatedEvent(event);
 
         return new AppointmentResponse(appointment);
     }
@@ -82,10 +101,27 @@ public class AppointmentServiceImpl implements AppointmentService {
             );
         }
 
+        // Store old times for event
+        LocalDateTime oldStartTime = appointment.startTime;
+        LocalDateTime oldEndTime = appointment.endTime;
+
         // Update times
         appointment.startTime = newStartTime;
         appointment.endTime = newEndTime;
         appointment.persist();
+
+        // Publish event
+        AppointmentRescheduledEvent event = new AppointmentRescheduledEvent(
+                appointment.id,
+                appointment.patientId,
+                appointment.doctorId,
+                oldStartTime,
+                oldEndTime,
+                newStartTime,
+                newEndTime,
+                LocalDateTime.now()
+        );
+        eventProducer.publishRescheduledEvent(event);
 
         return new AppointmentResponse(appointment);
     }
@@ -95,10 +131,23 @@ public class AppointmentServiceImpl implements AppointmentService {
     public void cancelAppointment(Long id, String reason) {
         Appointment appointment = findAppointmentById(id);
 
+        LocalDateTime originalStartTime = appointment.startTime;
+
         appointment.status = AppointmentStatus.CANCELLED;
         appointment.cancelledAt = LocalDateTime.now();
         appointment.cancellationReason = reason;
         appointment.persist();
+
+        // Publish event
+        AppointmentCancelledEvent event = new AppointmentCancelledEvent(
+                appointment.id,
+                appointment.patientId,
+                appointment.doctorId,
+                appointment.cancelledAt,
+                reason,
+                originalStartTime
+        );
+        eventProducer.publishCancelledEvent(event);
     }
 
     @Override
@@ -116,7 +165,17 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         appointment.status = AppointmentStatus.CONFIRMED;
         appointment.confirmationSent = true;
-        appointment.persist();
+        appointment.persistAndFlush();  // Use persistAndFlush to ensure immediate write
+
+        // Publish event
+        AppointmentConfirmedEvent event = new AppointmentConfirmedEvent(
+                appointment.id,
+                appointment.patientId,
+                appointment.doctorId,
+                LocalDateTime.now(),
+                appointment.startTime
+        );
+        eventProducer.publishConfirmedEvent(event);
 
         return new AppointmentResponse(appointment);
     }
@@ -136,7 +195,10 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         appointment.status = AppointmentStatus.CHECKED_IN;
         appointment.checkedInAt = LocalDateTime.now();
-        appointment.persist();
+        appointment.persistAndFlush();  // Use persistAndFlush to ensure immediate write
+
+        // Note: Check-in doesn't have a specific event, we could add one if needed
+        // For now, this is just a status change without event emission
 
         return new AppointmentResponse(appointment);
     }
@@ -156,7 +218,24 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         appointment.status = AppointmentStatus.COMPLETED;
         appointment.completedAt = LocalDateTime.now();
-        appointment.persist();
+        appointment.persistAndFlush();  // Use persistAndFlush to ensure immediate write
+
+        // Calculate duration
+        Integer durationMinutes = null;
+        if (appointment.startTime != null && appointment.endTime != null) {
+            durationMinutes = (int) ChronoUnit.MINUTES.between(appointment.startTime, appointment.endTime);
+        }
+
+        // Publish event
+        AppointmentCompletedEvent event = new AppointmentCompletedEvent(
+                appointment.id,
+                appointment.patientId,
+                appointment.doctorId,
+                appointment.completedAt,
+                appointment.startTime,
+                durationMinutes
+        );
+        eventProducer.publishCompletedEvent(event);
 
         return new AppointmentResponse(appointment);
     }
