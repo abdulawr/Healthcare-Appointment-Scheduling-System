@@ -155,12 +155,20 @@ http://localhost:8082/api/doctors
 | GET | `/experience/{years}` | Filter by experience | 200 |
 | GET | `/available/{day}` | Filter by availability | 200, 400 |
 | GET | `/fee-range?min=X&max=Y` | Filter by fee range | 200, 400 |
+| **Availability Management (NEW)** |
+| GET | `/{id}/availability` | Get all availability slots for a doctor | 200, 404 |
+| POST | `/{id}/availability` | Add new availability slot | 201, 400, 404 |
+| PUT | `/availability/{id}` | Update existing availability slot | 200, 400, 404 |
+| DELETE | `/availability/{id}` | Remove availability slot | 204, 404 |
+| **Specialization Analytics (NEW)** |
+| GET | `/specializations/details` | Get specialization breakdown & statistics | 200 |
 | **Utilities** |
 | GET | `/specializations` | List all specializations | 200 |
 | GET | `/statistics` | Get statistics | 200 |
 | **Account Management** |
 | POST | `/{id}/activate` | Activate doctor account | 204, 404 |
 | POST | `/{id}/deactivate` | Deactivate doctor account | 204, 404 |
+
 
 ### Request/Response Examples
 
