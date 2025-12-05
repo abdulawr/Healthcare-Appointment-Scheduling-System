@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: appointment-service
+  labels:
+    name: appointment-service
+    environment: production
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: appointment-service-ingress
+  namespace: appointment-service
+  labels:
+    app: appointment-service
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - appointment-service.yourdomain.com
+      secretName: appointment-service-tls
+  rules:
+    - host: appointment-service.yourdomain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: appointment-service
+                port:
+                  number: 8083

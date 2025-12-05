@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: appointment-service-config
+  namespace: appointment-service
+  labels:
+    app: appointment-service
+data:
+  # Application Configuration
+  QUARKUS_HTTP_PORT: "8083"
+  QUARKUS_LOG_LEVEL: "INFO"
+  QUARKUS_LOG_CATEGORY__CZ_MUNI_FI_HEALTHCARE__LEVEL: "DEBUG"
+
+  # Database Configuration
+  QUARKUS_DATASOURCE_DB_KIND: "postgresql"
+  QUARKUS_DATASOURCE_JDBC_URL: "jdbc:postgresql://postgres-service:5432/appointment_db"
+  QUARKUS_DATASOURCE_USERNAME: "appointment_user"
+  QUARKUS_DATASOURCE_JDBC_MAX_SIZE: "16"
+
+  # Hibernate Configuration
+  QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION: "update"
+  QUARKUS_HIBERNATE_ORM_LOG_SQL: "false"
+
+  # Kafka Configuration
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-service:9092"
+  MP_MESSAGING_OUTGOING_APPOINTMENT_EVENTS_CONNECTOR: "smallrye-kafka"
+  MP_MESSAGING_OUTGOING_APPOINTMENT_EVENTS_TOPIC: "appointment-events"
+  MP_MESSAGING_OUTGOING_APPOINTMENT_EVENTS_VALUE_SERIALIZER: "org.apache.kafka.common.serialization.StringSerializer"
