@@ -1,66 +1,71 @@
 package com.basit.cz;
 
-import jakarta.ws.rs.NotFoundException;
+import com.basit.cz.exception.NotFoundException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Global Exception Handler
- *
- * Catches exceptions and converts them to proper HTTP responses.
- * Provides consistent error format across the API.
+ * Global exception handler for REST endpoints
  */
 @Provider
 public class GlobalExceptionHandler implements ExceptionMapper<Exception> {
 
     @Override
     public Response toResponse(Exception exception) {
-        ErrorResponse errorResponse = new ErrorResponse();
-        errorResponse.timestamp = LocalDateTime.now();
-        errorResponse.message = exception.getMessage();
-
-        // Handle different exception types
         if (exception instanceof NotFoundException) {
-            errorResponse.status = 404;
-            errorResponse.error = "Not Found";
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(errorResponse)
-                    .build();
+            return handleNotFoundException((NotFoundException) exception);
+        } else if (exception instanceof IllegalArgumentException) {
+            return handleIllegalArgumentException((IllegalArgumentException) exception);
+        } else {
+            return handleGenericException(exception);
         }
+    }
 
-        if (exception instanceof IllegalArgumentException) {
-            errorResponse.status = 400;
-            errorResponse.error = "Bad Request";
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(errorResponse)
-                    .build();
-        }
+    private Response handleNotFoundException(NotFoundException ex) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("error", "Not Found");
+        error.put("message", ex.getMessage());
+        error.put("status", 404);
 
-        // Default: Internal Server Error
-        errorResponse.status = 500;
-        errorResponse.error = "Internal Server Error";
-        errorResponse.message = "An unexpected error occurred";
-
-        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                .entity(errorResponse)
+        return Response.status(Response.Status.NOT_FOUND)
+                .entity(error)
                 .build();
     }
 
-    /**
-     * Error Response DTO
-     */
-    public static class ErrorResponse {
-        public int status;
-        public String error;
-        public String message;
-        public LocalDateTime timestamp;
+    private Response handleIllegalArgumentException(IllegalArgumentException ex) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("error", "Bad Request");
+        error.put("message", ex.getMessage());
+        error.put("status", 400);
+
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(error)
+                .build();
+    }
+
+    private Response handleGenericException(Exception ex) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("error", "Internal Server Error");
+        error.put("message", ex.getMessage());
+        error.put("status", 500);
+
+        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                .entity(error)
+                .build();
     }
 }
+
+
+
+
+
+
+
+
 
 
 

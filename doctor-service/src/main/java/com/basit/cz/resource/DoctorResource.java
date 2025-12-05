@@ -1,7 +1,9 @@
 package com.basit.cz.resource;
 
+
 import com.basit.cz.dto.CreateDoctorRequest;
 import com.basit.cz.dto.DoctorDTO;
+import com.basit.cz.dto.SpecializationDTO;
 import com.basit.cz.dto.UpdateDoctorRequest;
 import com.basit.cz.service.DoctorService;
 import jakarta.inject.Inject;
@@ -10,6 +12,8 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.media.Content;
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
@@ -264,6 +268,28 @@ public class DoctorResource {
     }
 
     /**
+     * Get all specializations with detailed information
+     *
+     * @return List of specializations with details (200)
+     */
+    @GET
+    @Path("/specializations/details")
+    @Operation(
+            summary = "Get specializations with details",
+            description = "Get all specializations with doctor count, average fee, and average rating"
+    )
+    @APIResponse(
+            responseCode = "200",
+            description = "Specialization details retrieved successfully",
+            content = @Content(schema = @Schema(implementation = SpecializationDTO.class))
+    )
+    public Response getAllSpecializationsWithDetails() {
+        List<SpecializationDTO> specializations =
+                doctorService.getAllSpecializationsWithDetails();
+        return Response.ok(specializations).build();
+    }
+
+    /**
      * Get doctor statistics
      *
      * @return Statistics (total, avg rating, avg experience) (200)
@@ -309,6 +335,7 @@ public class DoctorResource {
         return Response.noContent().build();
     }
 }
+
 
 
 

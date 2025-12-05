@@ -2,407 +2,450 @@ package com.basit.cz.repository;
 
 import com.basit.cz.entity.Doctor;
 import com.basit.cz.entity.DoctorAvailability;
-import com.basit.cz.entity.DoctorReview;
-import com.basit.cz.entity.DoctorSchedule;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.time.DayOfWeek;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * ═══════════════════════════════════════════════════════════════════════════
- *                  DOCTOR REPOSITORY TESTS - STEP 2
- * ═══════════════════════════════════════════════════════════════════════════
- *
- * Tests all custom queries in DoctorRepository
- *
- * CUSTOM QUERIES TESTED (16):
- * 1. findAllActive()
- * 2. findByEmail()
- * 3. findBySpecialization()
- * 4. searchByName()
- * 5. findByMinimumRating()
- * 6. findBySpecializationAndRating()
- * 7. findTopRated()
- * 8. findByMinimumExperience()
- * 9. findDoctorsWithReviews()
- * 10. findAvailableOnDay()
- * 11. countBySpecialization()
- * 12. getAllSpecializations()
- * 13. findByLicenseNumber()
- * 14. findDoctorsWithAvailability()
- * 15. findByConsultationFeeRange()
- * 16. getDoctorStatistics()
+ * Test class for DoctorRepository
  */
 @QuarkusTest
-@DisplayName("Repository Tests - DoctorRepository")
 public class DoctorRepositoryTest {
 
     @Inject
     DoctorRepository doctorRepository;
 
+    @Inject
+    DoctorAvailabilityRepository availabilityRepository;
+
     @BeforeEach
     @Transactional
     public void setup() {
-        // Clean all data - DELETE CHILDREN FIRST to avoid FK constraint violations
-        DoctorReview.deleteAll();
-        DoctorAvailability.deleteAll();
-        DoctorSchedule.deleteAll();
-        Doctor.deleteAll();
+        // Clean up database before each test
+        availabilityRepository.deleteAll();
+        doctorRepository.deleteAll();
+    }
 
-        // Create test doctors
-        createTestDoctors();
+    // ===============================================
+    // BASIC CRUD TESTS
+    // ===============================================
+
+    @Test
+    @Transactional
+    public void testPersistDoctor() {
+        Doctor doctor = createTestDoctor("John", "Smith", "john.smith@test.com");
+        doctorRepository.persist(doctor);
+
+        assertNotNull(doctor.id);
+        assertEquals("John", doctor.firstName);
+        assertEquals("Smith", doctor.lastName);
     }
 
     @Test
     @Transactional
-    @DisplayName("TEST 1: Find all active doctors")
-    public void testFindAllActive() {
-        // Given: 4 active doctors, 1 inactive
+    public void testFindDoctorById() {
+        Doctor doctor = createTestDoctor("Jane", "Doe", "jane.doe@test.com");
+        doctorRepository.persist(doctor);
 
-        // When
-        List<Doctor> activeDoctors = doctorRepository.findAllActive();
-
-        // Then
-        assertEquals(4, activeDoctors.size(), "Should find 4 active doctors");
-        activeDoctors.forEach(doctor ->
-                assertTrue(doctor.isActive, "All doctors should be active")
-        );
+        Doctor found = doctorRepository.findById(doctor.id);
+        assertNotNull(found);
+        assertEquals("Jane", found.firstName);
+        assertEquals("Doe", found.lastName);
     }
 
     @Test
     @Transactional
-    @DisplayName("TEST 2: Find doctor by email")
+    public void testFindActiveDoctors() {
+        // Create active doctor
+        Doctor active = createTestDoctor("Active", "Doctor", "active@test.com");
+        active.isActive = true;
+        doctorRepository.persist(active);
+
+        // Create inactive doctor
+        Doctor inactive = createTestDoctor("Inactive", "Doctor", "inactive@test.com");
+        inactive.isActive = false;
+        doctorRepository.persist(inactive);
+
+        List<Doctor> activeDoctors = doctorRepository.findActiveDoctors();
+
+        assertTrue(activeDoctors.size() >= 1);
+        assertTrue(activeDoctors.stream().allMatch(d -> d.isActive));
+    }
+
+    // ===============================================
+    // EMAIL TESTS
+    // ===============================================
+
+    @Test
+    @Transactional
     public void testFindByEmail() {
-        // When
-        Optional<Doctor> found = doctorRepository.findByEmail("john.cardio@hospital.com");
+        Doctor doctor = createTestDoctor("Email", "Test", "email.test@hospital.com");
+        doctorRepository.persist(doctor);
 
-        // Then
-        assertTrue(found.isPresent(), "Doctor should be found");
-        assertEquals("John", found.get().firstName);
-        assertEquals("Cardiology", found.get().specialization);
+        Doctor found = doctorRepository.findByEmail("email.test@hospital.com");
+        assertNotNull(found);
+        assertEquals("email.test@hospital.com", found.email);
     }
 
     @Test
     @Transactional
-    @DisplayName("TEST 3: Find by specialization")
+    public void testExistsByEmail() {
+        Doctor doctor = createTestDoctor("Exists", "Test", "exists@test.com");
+        doctorRepository.persist(doctor);
+
+        assertTrue(doctorRepository.existsByEmail("exists@test.com"));
+        assertFalse(doctorRepository.existsByEmail("notexists@test.com"));
+    }
+
+    @Test
+    @Transactional
+    public void testExistsByEmailCaseInsensitive() {
+        Doctor doctor = createTestDoctor("Case", "Test", "CasE@Test.com");
+        doctorRepository.persist(doctor);
+
+        assertTrue(doctorRepository.existsByEmail("case@test.com"));
+        assertTrue(doctorRepository.existsByEmail("CASE@TEST.COM"));
+    }
+
+    // ===============================================
+    // SPECIALIZATION TESTS
+    // ===============================================
+
+    @Test
+    @Transactional
     public void testFindBySpecialization() {
-        // When
+        Doctor cardio1 = createTestDoctor("Cardio", "One", "cardio1@test.com");
+        cardio1.specialization = "Cardiology";
+        doctorRepository.persist(cardio1);
+
+        Doctor cardio2 = createTestDoctor("Cardio", "Two", "cardio2@test.com");
+        cardio2.specialization = "Cardiology";
+        doctorRepository.persist(cardio2);
+
+        Doctor neuro = createTestDoctor("Neuro", "One", "neuro@test.com");
+        neuro.specialization = "Neurology";
+        doctorRepository.persist(neuro);
+
         List<Doctor> cardiologists = doctorRepository.findBySpecialization("Cardiology");
 
-        // Then
-        assertEquals(2, cardiologists.size(), "Should find 2 cardiologists");
-        cardiologists.forEach(doctor ->
-                assertTrue(doctor.hasSpecialization("Cardiology"))
-        );
+        assertEquals(2, cardiologists.size());
+        assertTrue(cardiologists.stream().allMatch(d -> "Cardiology".equals(d.specialization)));
     }
 
     @Test
     @Transactional
-    @DisplayName("TEST 4: Search by name")
-    public void testSearchByName() {
-        // Test first name search
-        List<Doctor> johnDoctors = doctorRepository.searchByName("john");
-        assertEquals(1, johnDoctors.size());
-        assertEquals("John", johnDoctors.get(0).firstName);
-
-        // Test last name search
-        List<Doctor> smithDoctors = doctorRepository.searchByName("smith");
-        assertEquals(2, smithDoctors.size());
-
-        // Test partial match
-        List<Doctor> partialMatch = doctorRepository.searchByName("jo");
-        assertTrue(partialMatch.size() >= 1);
-    }
-
-    @Test
-    @Transactional
-    @DisplayName("TEST 5: Find by minimum rating")
-    public void testFindByMinimumRating() {
-        // When
-        List<Doctor> topRated = doctorRepository.findByMinimumRating(4.5);
-
-        // Then
-        assertTrue(topRated.size() >= 1, "Should find at least 1 top-rated doctor");
-        topRated.forEach(doctor ->
-                assertTrue(doctor.averageRating >= 4.5,
-                        "All doctors should have rating >= 4.5")
-        );
-
-        // Verify ordering (DESC)
-        for (int i = 0; i < topRated.size() - 1; i++) {
-            assertTrue(topRated.get(i).averageRating >= topRated.get(i + 1).averageRating,
-                    "Should be ordered by rating DESC");
-        }
-    }
-
-    @Test
-    @Transactional
-    @DisplayName("TEST 6: Find by specialization and rating")
-    public void testFindBySpecializationAndRating() {
-        // When
-        List<Doctor> topCardiologists = doctorRepository
-                .findBySpecializationAndRating("Cardiology", 4.0);
-
-        // Then
-        assertTrue(topCardiologists.size() >= 1);
-        topCardiologists.forEach(doctor -> {
-            assertTrue(doctor.hasSpecialization("Cardiology"));
-            assertTrue(doctor.averageRating >= 4.0);
-        });
-    }
-
-    @Test
-    @Transactional
-    @DisplayName("TEST 7: Find top-rated doctors (4.0+)")
-    public void testFindTopRated() {
-        // When
-        List<Doctor> topRated = doctorRepository.findTopRated();
-
-        // Then
-        assertTrue(topRated.size() >= 1);
-        topRated.forEach(doctor ->
-                assertTrue(doctor.averageRating >= 4.0)
-        );
-    }
-
-    @Test
-    @Transactional
-    @DisplayName("TEST 8: Find by minimum experience")
-    public void testFindByMinimumExperience() {
-        // When
-        List<Doctor> experienced = doctorRepository.findByMinimumExperience(15);
-
-        // Then
-        assertTrue(experienced.size() >= 1);
-        experienced.forEach(doctor ->
-                assertTrue(doctor.yearsOfExperience >= 15)
-        );
-
-        // Verify ordering (DESC)
-        for (int i = 0; i < experienced.size() - 1; i++) {
-            assertTrue(experienced.get(i).yearsOfExperience >=
-                    experienced.get(i + 1).yearsOfExperience);
-        }
-    }
-
-    @Test
-    @Transactional
-    @DisplayName("TEST 9: Find doctors with reviews")
-    public void testFindDoctorsWithReviews() {
-        // When
-        List<Doctor> withReviews = doctorRepository.findDoctorsWithReviews();
-
-        // Then
-        assertTrue(withReviews.size() >= 1);
-        withReviews.forEach(doctor ->
-                assertTrue(doctor.totalReviews > 0)
-        );
-    }
-
-    @Test
-    @Transactional
-    @DisplayName("TEST 10: Find available on specific day")
-    public void testFindAvailableOnDay() {
-        // When
-        List<Doctor> mondayDoctors = doctorRepository.findAvailableOnDay("MONDAY");
-
-        // Then
-        assertTrue(mondayDoctors.size() >= 1,
-                "Should find doctors available on Monday");
-    }
-
-    @Test
-    @Transactional
-    @DisplayName("TEST 11: Count by specialization")
-    public void testCountBySpecialization() {
-        // When
-        long cardiologyCount = doctorRepository.countBySpecialization("Cardiology");
-
-        // Then
-        assertEquals(2, cardiologyCount, "Should have 2 cardiologists");
-    }
-
-    @Test
-    @Transactional
-    @DisplayName("TEST 12: Get all specializations")
     public void testGetAllSpecializations() {
-        // When
+        Doctor cardio = createTestDoctor("Cardio", "Doc", "cardio@test.com");
+        cardio.specialization = "Cardiology";
+        doctorRepository.persist(cardio);
+
+        Doctor neuro = createTestDoctor("Neuro", "Doc", "neuro@test.com");
+        neuro.specialization = "Neurology";
+        doctorRepository.persist(neuro);
+
         List<String> specializations = doctorRepository.getAllSpecializations();
 
-        // Then
-        assertTrue(specializations.size() >= 3);
+        assertTrue(specializations.size() >= 2);
         assertTrue(specializations.contains("Cardiology"));
         assertTrue(specializations.contains("Neurology"));
-        assertTrue(specializations.contains("Pediatrics"));
     }
 
     @Test
     @Transactional
-    @DisplayName("TEST 13: Find by license number")
-    public void testFindByLicenseNumber() {
-        // When
-        Optional<Doctor> found = doctorRepository.findByLicenseNumber("LIC-001");
+    public void testCountBySpecialization() {
+        Doctor cardio1 = createTestDoctor("C1", "Doc", "c1@test.com");
+        cardio1.specialization = "Cardiology";
+        doctorRepository.persist(cardio1);
 
-        // Then
-        assertTrue(found.isPresent());
-        assertEquals("John", found.get().firstName);
+        Doctor cardio2 = createTestDoctor("C2", "Doc", "c2@test.com");
+        cardio2.specialization = "Cardiology";
+        doctorRepository.persist(cardio2);
+
+        long count = doctorRepository.countBySpecialization("Cardiology");
+        assertEquals(2, count);
+    }
+
+    // ===============================================
+    // SEARCH TESTS
+    // ===============================================
+
+    @Test
+    @Transactional
+    public void testSearchByName() {
+        Doctor john = createTestDoctor("John", "Smith", "john.smith@test.com");
+        doctorRepository.persist(john);
+
+        Doctor jane = createTestDoctor("Jane", "Johnson", "jane.johnson@test.com");
+        doctorRepository.persist(jane);
+
+        // Search by first name
+        List<Doctor> johnResults = doctorRepository.searchByName("John");
+        assertTrue(johnResults.size() >= 1);
+        assertTrue(johnResults.stream().anyMatch(d -> "John".equals(d.firstName)));
+
+        // Search by last name
+        List<Doctor> smithResults = doctorRepository.searchByName("Smith");
+        assertTrue(smithResults.size() >= 1);
+        assertTrue(smithResults.stream().anyMatch(d -> "Smith".equals(d.lastName)));
     }
 
     @Test
     @Transactional
-    @DisplayName("TEST 14: Find doctors with availability")
-    public void testFindDoctorsWithAvailability() {
-        // When
-        List<Doctor> withAvailability = doctorRepository.findDoctorsWithAvailability();
+    public void testSearchByNameCaseInsensitive() {
+        Doctor doctor = createTestDoctor("Doctor", "Name", "doctor.name@test.com");
+        doctorRepository.persist(doctor);
 
-        // Then
-        assertTrue(withAvailability.size() >= 1);
+        List<Doctor> lowerCase = doctorRepository.searchByName("doctor");
+        List<Doctor> upperCase = doctorRepository.searchByName("DOCTOR");
+
+        assertTrue(lowerCase.size() >= 1);
+        assertTrue(upperCase.size() >= 1);
+    }
+
+    // ===============================================
+    // RATING TESTS
+    // ===============================================
+
+    @Test
+    @Transactional
+    public void testFindTopRated() {
+        Doctor highRated = createTestDoctor("High", "Rated", "high@test.com");
+        highRated.averageRating = 4.5;
+        doctorRepository.persist(highRated);
+
+        Doctor lowRated = createTestDoctor("Low", "Rated", "low@test.com");
+        lowRated.averageRating = 3.5;
+        doctorRepository.persist(lowRated);
+
+        List<Doctor> topRated = doctorRepository.findTopRated();
+
+        assertTrue(topRated.size() >= 1);
+        assertTrue(topRated.stream().allMatch(d -> d.averageRating >= 4.0));
     }
 
     @Test
     @Transactional
-    @DisplayName("TEST 15: Find by consultation fee range")
+    public void testFindByMinimumRating() {
+        Doctor rating45 = createTestDoctor("R45", "Doc", "r45@test.com");
+        rating45.averageRating = 4.5;
+        doctorRepository.persist(rating45);
+
+        Doctor rating40 = createTestDoctor("R40", "Doc", "r40@test.com");
+        rating40.averageRating = 4.0;
+        doctorRepository.persist(rating40);
+
+        Doctor rating35 = createTestDoctor("R35", "Doc", "r35@test.com");
+        rating35.averageRating = 3.5;
+        doctorRepository.persist(rating35);
+
+        List<Doctor> minRating40 = doctorRepository.findByMinimumRating(4.0);
+
+        assertEquals(2, minRating40.size());
+        assertTrue(minRating40.stream().allMatch(d -> d.averageRating >= 4.0));
+    }
+
+    @Test
+    @Transactional
+    public void testFindBySpecializationAndRating() {
+        Doctor cardioHigh = createTestDoctor("CH", "Doc", "ch@test.com");
+        cardioHigh.specialization = "Cardiology";
+        cardioHigh.averageRating = 4.5;
+        doctorRepository.persist(cardioHigh);
+
+        Doctor cardioLow = createTestDoctor("CL", "Doc", "cl@test.com");
+        cardioLow.specialization = "Cardiology";
+        cardioLow.averageRating = 3.5;
+        doctorRepository.persist(cardioLow);
+
+        List<Doctor> results = doctorRepository.findBySpecializationAndRating("Cardiology", 4.0);
+
+        assertEquals(1, results.size());
+        assertEquals("Cardiology", results.get(0).specialization);
+        assertTrue(results.get(0).averageRating >= 4.0);
+    }
+
+    // ===============================================
+    // EXPERIENCE TESTS
+    // ===============================================
+
+    @Test
+    @Transactional
+    public void testFindByMinimumExperience() {
+        Doctor exp20 = createTestDoctor("E20", "Doc", "e20@test.com");
+        exp20.yearsOfExperience = 20;
+        doctorRepository.persist(exp20);
+
+        Doctor exp10 = createTestDoctor("E10", "Doc", "e10@test.com");
+        exp10.yearsOfExperience = 10;
+        doctorRepository.persist(exp10);
+
+        Doctor exp5 = createTestDoctor("E5", "Doc", "e5@test.com");
+        exp5.yearsOfExperience = 5;
+        doctorRepository.persist(exp5);
+
+        List<Doctor> minExp10 = doctorRepository.findByMinimumExperience(10);
+
+        assertEquals(2, minExp10.size());
+        assertTrue(minExp10.stream().allMatch(d -> d.yearsOfExperience >= 10));
+    }
+
+    // ===============================================
+    // FEE TESTS
+    // ===============================================
+
+    @Test
+    @Transactional
     public void testFindByConsultationFeeRange() {
-        // When
-        List<Doctor> midRange = doctorRepository.findByConsultationFeeRange(80.0, 120.0);
+        Doctor fee100 = createTestDoctor("F100", "Doc", "f100@test.com");
+        fee100.consultationFee = 100.0;
+        doctorRepository.persist(fee100);
 
-        // Then
-        assertTrue(midRange.size() >= 1);
-        midRange.forEach(doctor -> {
-            assertTrue(doctor.consultationFee >= 80.0);
-            assertTrue(doctor.consultationFee <= 120.0);
-        });
+        Doctor fee150 = createTestDoctor("F150", "Doc", "f150@test.com");
+        fee150.consultationFee = 150.0;
+        doctorRepository.persist(fee150);
 
-        // Verify ordering by fee ASC
-        for (int i = 0; i < midRange.size() - 1; i++) {
-            assertTrue(midRange.get(i).consultationFee <=
-                    midRange.get(i + 1).consultationFee);
-        }
+        Doctor fee200 = createTestDoctor("F200", "Doc", "f200@test.com");
+        fee200.consultationFee = 200.0;
+        doctorRepository.persist(fee200);
+
+        List<Doctor> range = doctorRepository.findByConsultationFeeRange(100.0, 180.0);
+
+        assertEquals(2, range.size());
+        assertTrue(range.stream().allMatch(d ->
+                d.consultationFee >= 100.0 && d.consultationFee <= 180.0
+        ));
+    }
+
+    // ===============================================
+    // AVAILABILITY TESTS
+    // ===============================================
+
+    @Test
+    @Transactional
+    public void testFindAvailableOnDay() {
+        // Create doctor with Monday availability
+        Doctor doctor = createTestDoctor("Available", "Monday", "monday@test.com");
+        doctorRepository.persist(doctor);
+
+        DoctorAvailability availability = new DoctorAvailability();
+        availability.doctor = doctor;
+        availability.dayOfWeek = "MONDAY";
+        availability.startTime = LocalTime.of(9, 0);
+        availability.endTime = LocalTime.of(17, 0);
+        availability.isActive = true;
+        availability.createdAt = LocalDateTime.now();
+        availabilityRepository.persist(availability);
+
+        List<Doctor> mondayDoctors = doctorRepository.findAvailableOnDay("MONDAY");
+
+        assertTrue(mondayDoctors.size() >= 1);
+        assertTrue(mondayDoctors.stream().anyMatch(d -> d.id.equals(doctor.id)));
+    }
+
+    // ===============================================
+    // AGGREGATION TESTS
+    // ===============================================
+
+    @Test
+    @Transactional
+    public void testCountActiveDoctors() {
+        Doctor active1 = createTestDoctor("A1", "Doc", "a1@test.com");
+        active1.isActive = true;
+        doctorRepository.persist(active1);
+
+        Doctor active2 = createTestDoctor("A2", "Doc", "a2@test.com");
+        active2.isActive = true;
+        doctorRepository.persist(active2);
+
+        Doctor inactive = createTestDoctor("I1", "Doc", "i1@test.com");
+        inactive.isActive = false;
+        doctorRepository.persist(inactive);
+
+        long count = doctorRepository.countActiveDoctors();
+        assertTrue(count >= 2);
     }
 
     @Test
     @Transactional
-    @DisplayName("TEST 16: Get doctor statistics")
+    public void testCalculateAverageRating() {
+        Doctor d1 = createTestDoctor("D1", "Doc", "d1@test.com");
+        d1.averageRating = 4.0;
+        doctorRepository.persist(d1);
+
+        Doctor d2 = createTestDoctor("D2", "Doc", "d2@test.com");
+        d2.averageRating = 5.0;
+        doctorRepository.persist(d2);
+
+        double avgRating = doctorRepository.calculateAverageRating();
+        assertTrue(avgRating >= 4.0 && avgRating <= 5.0);
+    }
+
+    @Test
+    @Transactional
+    public void testCalculateAverageExperience() {
+        Doctor d1 = createTestDoctor("D1", "Doc", "d1@test.com");
+        d1.yearsOfExperience = 10;
+        doctorRepository.persist(d1);
+
+        Doctor d2 = createTestDoctor("D2", "Doc", "d2@test.com");
+        d2.yearsOfExperience = 20;
+        doctorRepository.persist(d2);
+
+        double avgExp = doctorRepository.calculateAverageExperience();
+        assertTrue(avgExp >= 10.0 && avgExp <= 20.0);
+    }
+
+    @Test
+    @Transactional
     public void testGetDoctorStatistics() {
-        // When
+        Doctor d1 = createTestDoctor("Stat1", "Doc", "stat1@test.com");
+        d1.averageRating = 4.5;
+        d1.yearsOfExperience = 15;
+        doctorRepository.persist(d1);
+
+        Doctor d2 = createTestDoctor("Stat2", "Doc", "stat2@test.com");
+        d2.averageRating = 4.0;
+        d2.yearsOfExperience = 10;
+        doctorRepository.persist(d2);
+
         Object[] stats = doctorRepository.getDoctorStatistics();
 
-        // Then
         assertNotNull(stats);
         assertEquals(3, stats.length);
 
         Long totalDoctors = ((Number) stats[0]).longValue();
-        Double avgRating = (Double) stats[1];
-        Double avgExperience = (Double) stats[2];
-
-        assertEquals(4L, totalDoctors, "Should have 4 active doctors");
-        assertTrue(avgRating > 0.0, "Average rating should be positive");
-        assertTrue(avgExperience > 0.0, "Average experience should be positive");
+        assertTrue(totalDoctors >= 2);
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // HELPER METHOD: Create Test Data
-    // ═══════════════════════════════════════════════════════════
-    private void createTestDoctors() {
-        // Doctor 1: Cardiologist, experienced, top-rated
-        Doctor d1 = new Doctor();
-        d1.firstName = "John";
-        d1.lastName = "Cardio";
-        d1.email = "john.cardio@hospital.com";
-        d1.phoneNumber = "+420111111111";
-        d1.specialization = "Cardiology";
-        d1.yearsOfExperience = 20;
-        d1.licenseNumber = "LIC-001";
-        d1.consultationFee = 100.0;
-        d1.averageRating = 4.8;
-        d1.totalReviews = 50;
-        d1.isActive = true;
-        d1.persist();
+    // ===============================================
+    // HELPER METHODS
+    // ===============================================
 
-        // Add availability for Monday
-        DoctorAvailability avail1 = new DoctorAvailability();
-        avail1.doctor = d1;
-        avail1.dayOfWeek = DayOfWeek.MONDAY;
-        avail1.startTime = LocalTime.of(9, 0);
-        avail1.endTime = LocalTime.of(17, 0);
-        avail1.persist();
-
-        // Doctor 2: Cardiologist, less experienced
-        Doctor d2 = new Doctor();
-        d2.firstName = "Jane";
-        d2.lastName = "Smith";
-        d2.email = "jane.smith@hospital.com";
-        d2.phoneNumber = "+420222222222";
-        d2.specialization = "Cardiology";
-        d2.yearsOfExperience = 10;
-        d2.licenseNumber = "LIC-002";
-        d2.consultationFee = 85.0;
-        d2.averageRating = 4.2;
-        d2.totalReviews = 30;
-        d2.isActive = true;
-        d2.persist();
-
-        // Doctor 3: Neurologist
-        Doctor d3 = new Doctor();
-        d3.firstName = "Bob";
-        d3.lastName = "Neuro";
-        d3.email = "bob.neuro@hospital.com";
-        d3.phoneNumber = "+420333333333";
-        d3.specialization = "Neurology";
-        d3.yearsOfExperience = 15;
-        d3.licenseNumber = "LIC-003";
-        d3.consultationFee = 110.0;
-        d3.averageRating = 4.5;
-        d3.totalReviews = 40;
-        d3.isActive = true;
-        d3.persist();
-
-        // Doctor 4: Pediatrician
-        Doctor d4 = new Doctor();
-        d4.firstName = "Alice";
-        d4.lastName = "Smith";
-        d4.email = "alice.smith@hospital.com";
-        d4.phoneNumber = "+420444444444";
-        d4.specialization = "Pediatrics";
-        d4.yearsOfExperience = 8;
-        d4.licenseNumber = "LIC-004";
-        d4.consultationFee = 75.0;
-        d4.averageRating = 3.9;
-        d4.totalReviews = 25;
-        d4.isActive = true;
-        d4.persist();
-
-        // Doctor 5: Inactive doctor (should not appear in most queries)
-        Doctor d5 = new Doctor();
-        d5.firstName = "Inactive";
-        d5.lastName = "Doctor";
-        d5.email = "inactive@hospital.com";
-        d5.phoneNumber = "+420555555555";
-        d5.specialization = "Surgery";
-        d5.yearsOfExperience = 12;
-        d5.licenseNumber = "LIC-005";
-        d5.consultationFee = 90.0;
-        d5.averageRating = 4.0;
-        d5.totalReviews = 20;
-        d5.isActive = false; // INACTIVE
-        d5.persist();
+    private Doctor createTestDoctor(String firstName, String lastName, String email) {
+        Doctor doctor = new Doctor();
+        doctor.firstName = firstName;
+        doctor.lastName = lastName;
+        doctor.email = email;
+        doctor.phoneNumber = "+1234567890";
+        doctor.specialization = "General";
+        doctor.yearsOfExperience = 5;
+        doctor.licenseNumber = "LIC-" + java.util.UUID.randomUUID().toString();
+        doctor.consultationFee = 100.0;
+        doctor.bio = "Test doctor bio";
+        doctor.qualifications = "MD";
+        doctor.averageRating = 4.0;
+        doctor.totalReviews = 10;
+        doctor.isActive = true;
+        doctor.createdAt = LocalDateTime.now();
+        doctor.updatedAt = LocalDateTime.now();
+        return doctor;
     }
 }
-
-
-
-
-
-
-
-

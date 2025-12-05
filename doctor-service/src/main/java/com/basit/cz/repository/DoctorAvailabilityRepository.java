@@ -3,97 +3,85 @@ package com.basit.cz.repository;
 import com.basit.cz.entity.DoctorAvailability;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.persistence.EntityManager;
-import jakarta.inject.Inject;
 
-import java.time.DayOfWeek;
 import java.time.LocalTime;
 import java.util.List;
 
 /**
- * Doctor Availability Repository
- *
- * Provides custom queries for DoctorAvailability entity.
- * Handles queries related to doctor working hours and time slots.
+ * Repository for DoctorAvailability entity
  */
 @ApplicationScoped
 public class DoctorAvailabilityRepository implements PanacheRepository<DoctorAvailability> {
 
-    @Inject
-    EntityManager entityManager;
-
     /**
-     * Find all availability slots for a doctor
-     *
-     * @param doctorId Doctor's ID
-     * @return List of availability slots
+     * Find all availability slots for a specific doctor
      */
     public List<DoctorAvailability> findByDoctorId(Long doctorId) {
-        return list("doctor.id = ?1 AND isActive = true ORDER BY dayOfWeek, startTime",
-                doctorId);
+        return find("doctor.id = ?1 ORDER BY dayOfWeek, startTime", doctorId).list();
     }
 
     /**
-     * Find availability by doctor and day of week
-     *
-     * @param doctorId Doctor's ID
-     * @param dayOfWeek Day of week
-     * @return List of availability slots for that day
+     * Find active availability slots for a doctor
      */
-    public List<DoctorAvailability> findByDoctorAndDay(Long doctorId, DayOfWeek dayOfWeek) {
-        return list("doctor.id = ?1 AND dayOfWeek = ?2 AND isActive = true ORDER BY startTime",
-                doctorId, dayOfWeek);
+    public List<DoctorAvailability> findActiveByDoctorId(Long doctorId) {
+        return find("doctor.id = ?1 AND isActive = true ORDER BY dayOfWeek, startTime", doctorId).list();
     }
 
     /**
-     * Find availability by day of week (all doctors)
-     *
-     * @param dayOfWeek Day of week
-     * @return List of availability slots for that day
+     * Find availability slots by doctor and day of week
      */
-    public List<DoctorAvailability> findByDay(DayOfWeek dayOfWeek) {
-        return list("dayOfWeek = ?1 AND isActive = true ORDER BY startTime", dayOfWeek);
+    public List<DoctorAvailability> findByDoctorIdAndDayOfWeek(Long doctorId, String dayOfWeek) {
+        return find("doctor.id = ?1 AND dayOfWeek = ?2 ORDER BY startTime",
+                doctorId, dayOfWeek.toUpperCase()).list();
     }
 
     /**
-     * Find availability slots that overlap with a specific time
-     *
-     * @param doctorId Doctor's ID
-     * @param dayOfWeek Day of week
-     * @param time Time to check
-     * @return List of overlapping availability slots
+     * Find active availability slots by doctor and day
      */
-    public List<DoctorAvailability> findOverlappingSlots(Long doctorId, DayOfWeek dayOfWeek, LocalTime time) {
-        return entityManager.createQuery(
-                        "SELECT a FROM DoctorAvailability a " +
-                                "WHERE a.doctor.id = :doctorId " +
-                                "AND a.dayOfWeek = :day " +
-                                "AND a.startTime <= :time " +
-                                "AND a.endTime > :time " +
-                                "AND a.isActive = true",
-                        DoctorAvailability.class)
-                .setParameter("doctorId", doctorId)
-                .setParameter("day", dayOfWeek)
-                .setParameter("time", time)
-                .getResultList();
+    public List<DoctorAvailability> findActiveByDoctorIdAndDayOfWeek(Long doctorId, String dayOfWeek) {
+        return find("doctor.id = ?1 AND dayOfWeek = ?2 AND isActive = true ORDER BY startTime",
+                doctorId, dayOfWeek.toUpperCase()).list();
+    }
+
+    /**
+     * Find availability by time range
+     */
+    public List<DoctorAvailability> findByDoctorIdAndTimeRange(Long doctorId, LocalTime startTime, LocalTime endTime) {
+        return find("doctor.id = ?1 AND startTime >= ?2 AND endTime <= ?3 ORDER BY dayOfWeek, startTime",
+                doctorId, startTime, endTime).list();
+    }
+
+    /**
+     * Check if doctor is available on a specific day
+     */
+    public boolean isDoctorAvailableOnDay(Long doctorId, String dayOfWeek) {
+        return count("doctor.id = ?1 AND dayOfWeek = ?2 AND isActive = true",
+                doctorId, dayOfWeek.toUpperCase()) > 0;
     }
 
     /**
      * Delete all availability slots for a doctor
-     *
-     * @param doctorId Doctor's ID
-     * @return Number of slots deleted
      */
     public long deleteByDoctorId(Long doctorId) {
-        return delete("doctor.id", doctorId);
+        return delete("doctor.id = ?1", doctorId);
     }
 
     /**
-     * Find active availability slots
-     *
-     * @return List of all active slots
+     * Deactivate all availability slots for a doctor
      */
-    public List<DoctorAvailability> findAllActive() {
-        return list("isActive = true ORDER BY dayOfWeek, startTime");
+    public long deactivateByDoctorId(Long doctorId) {
+        return update("isActive = false WHERE doctor.id = ?1", doctorId);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+

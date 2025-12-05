@@ -538,7 +538,7 @@ public class DoctorResourceTest {
         // Add availability for Monday
         DoctorAvailability avail1 = new DoctorAvailability();
         avail1.doctor = d1;
-        avail1.dayOfWeek = DayOfWeek.MONDAY;
+        avail1.dayOfWeek = "MONDAY";
         avail1.startTime = LocalTime.of(9, 0);
         avail1.endTime = LocalTime.of(17, 0);
         avail1.persist();
@@ -592,20 +592,3 @@ public class DoctorResourceTest {
         return d1.id;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

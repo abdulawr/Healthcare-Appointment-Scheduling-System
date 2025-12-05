@@ -3,226 +3,331 @@ package com.basit.cz.repository;
 import com.basit.cz.entity.Doctor;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.persistence.EntityManager;
-import jakarta.inject.Inject;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
- * Doctor Repository
- *
- * Provides custom queries for Doctor entity beyond basic CRUD.
- * Uses Panache for simplified data access.
- *
- * Custom Queries:
- * - Find by specialization
- * - Search by name
- * - Find active doctors
- * - Find by minimum rating
- * - Find by email
- * - And more...
+ * Repository for Doctor entity with custom query methods
  */
 @ApplicationScoped
 public class DoctorRepository implements PanacheRepository<Doctor> {
 
-    @Inject
-    EntityManager entityManager;
+    // ===============================================
+    // EXISTENCE CHECKS
+    // ===============================================
 
     /**
-     * Find all active doctors
-     *
-     * @return List of active doctors
+     * Check if email already exists
      */
-    public List<Doctor> findAllActive() {
-        return list("isActive", true);
+    public boolean existsByEmail(String email) {
+        return count("LOWER(email) = LOWER(?1)", email) > 0;
     }
 
     /**
-     * Find doctor by email
-     *
-     * @param email Doctor's email address
-     * @return Optional containing doctor if found
+     * Check if license number exists
      */
-    public Optional<Doctor> findByEmail(String email) {
-        return find("email", email).firstResultOptional();
+    public boolean existsByLicenseNumber(String licenseNumber) {
+        return count("licenseNumber = ?1", licenseNumber) > 0;
+    }
+
+    // ===============================================
+    // BASIC QUERIES
+    // ===============================================
+
+    /**
+     * Find doctor by email
+     */
+    public Doctor findByEmail(String email) {
+        return find("LOWER(email) = LOWER(?1)", email).firstResult();
+    }
+
+    /**
+     * Find all active doctors
+     */
+    public List<Doctor> findActiveDoctors() {
+        return find("isActive = true ORDER BY firstName, lastName").list();
+    }
+
+    /**
+     * Find all inactive doctors
+     */
+    public List<Doctor> findInactiveDoctors() {
+        return find("isActive = false ORDER BY firstName, lastName").list();
+    }
+
+    // ===============================================
+    // SEARCH QUERIES
+    // ===============================================
+
+    /**
+     * Search doctors by name (first name or last name)
+     */
+    public List<Doctor> searchByName(String searchTerm) {
+        String pattern = "%" + searchTerm.toLowerCase() + "%";
+        return find("LOWER(firstName) LIKE ?1 OR LOWER(lastName) LIKE ?1 AND isActive = true ORDER BY firstName",
+                pattern).list();
     }
 
     /**
      * Find doctors by specialization
-     *
-     * @param specialization Medical specialization
-     * @return List of doctors with matching specialization
      */
     public List<Doctor> findBySpecialization(String specialization) {
-        return list("LOWER(specialization) = LOWER(?1) AND isActive = true", specialization);
+        return find("specialization = ?1 AND isActive = true ORDER BY averageRating DESC",
+                specialization).list();
     }
 
     /**
-     * Search doctors by name (first name or last name)
-     * Case-insensitive search
-     *
-     * @param searchTerm Search term
-     * @return List of matching doctors
+     * Find doctors by specialization (case-insensitive)
      */
-    public List<Doctor> searchByName(String searchTerm) {
-        String pattern = "%" + searchTerm.toLowerCase() + "%";
-        return list("(LOWER(firstName) LIKE ?1 OR LOWER(lastName) LIKE ?1) AND isActive = true",
-                pattern);
+    public List<Doctor> findBySpecializationIgnoreCase(String specialization) {
+        return find("LOWER(specialization) = LOWER(?1) AND isActive = true ORDER BY averageRating DESC",
+                specialization).list();
+    }
+
+    // ===============================================
+    // RATING QUERIES
+    // ===============================================
+
+    /**
+     * Find top-rated doctors (rating >= 4.0)
+     */
+    public List<Doctor> findTopRated() {
+        return find("averageRating >= 4.0 AND isActive = true ORDER BY averageRating DESC, totalReviews DESC")
+                .list();
     }
 
     /**
      * Find doctors with minimum rating
-     *
-     * @param minRating Minimum average rating (e.g., 4.0)
-     * @return List of doctors with rating >= minRating
      */
     public List<Doctor> findByMinimumRating(double minRating) {
-        return list("averageRating >= ?1 AND isActive = true ORDER BY averageRating DESC",
-                minRating);
+        return find("averageRating >= ?1 AND isActive = true ORDER BY averageRating DESC", minRating).list();
     }
 
     /**
-     * Find doctors by specialization with minimum rating
-     *
-     * @param specialization Medical specialization
-     * @param minRating Minimum average rating
-     * @return List of doctors matching both criteria
+     * Find doctors by specialization and minimum rating
      */
     public List<Doctor> findBySpecializationAndRating(String specialization, double minRating) {
-        return list("LOWER(specialization) = LOWER(?1) AND averageRating >= ?2 AND isActive = true " +
-                        "ORDER BY averageRating DESC",
-                specialization, minRating);
+        return find("specialization = ?1 AND averageRating >= ?2 AND isActive = true ORDER BY averageRating DESC",
+                specialization, minRating).list();
     }
 
-    /**
-     * Find top-rated doctors (rating >= 4.0)
-     *
-     * @return List of top-rated doctors
-     */
-    public List<Doctor> findTopRated() {
-        return findByMinimumRating(4.0);
-    }
+    // ===============================================
+    // EXPERIENCE QUERIES
+    // ===============================================
 
     /**
      * Find doctors by minimum years of experience
-     *
-     * @param minYears Minimum years of experience
-     * @return List of experienced doctors
      */
     public List<Doctor> findByMinimumExperience(int minYears) {
-        return list("yearsOfExperience >= ?1 AND isActive = true ORDER BY yearsOfExperience DESC",
-                minYears);
+        return find("yearsOfExperience >= ?1 AND isActive = true ORDER BY yearsOfExperience DESC", minYears).list();
     }
 
     /**
-     * Find doctors with reviews (has at least one review)
-     *
-     * @return List of doctors who have been reviewed
+     * Find doctors by experience range
      */
-    public List<Doctor> findDoctorsWithReviews() {
-        return entityManager.createQuery(
-                        "SELECT DISTINCT d FROM Doctor d " +
-                                "WHERE d.totalReviews > 0 AND d.isActive = true " +
-                                "ORDER BY d.averageRating DESC",
-                        Doctor.class)
-                .getResultList();
+    public List<Doctor> findByExperienceRange(int minYears, int maxYears) {
+        return find("yearsOfExperience >= ?1 AND yearsOfExperience <= ?2 AND isActive = true ORDER BY yearsOfExperience DESC",
+                minYears, maxYears).list();
+    }
+
+    // ===============================================
+    // CONSULTATION FEE QUERIES
+    // ===============================================
+
+    /**
+     * Find doctors by consultation fee range
+     */
+    public List<Doctor> findByConsultationFeeRange(double minFee, double maxFee) {
+        return find("consultationFee >= ?1 AND consultationFee <= ?2 AND isActive = true ORDER BY consultationFee",
+                minFee, maxFee).list();
     }
 
     /**
-     * Find doctors available on specific day
-     * (Have availability slots for that day)
-     *
-     * @param dayOfWeek Day of week (e.g., MONDAY)
-     * @return List of available doctors
+     * Find doctors with fee less than
+     */
+    public List<Doctor> findByMaxConsultationFee(double maxFee) {
+        return find("consultationFee <= ?1 AND isActive = true ORDER BY consultationFee", maxFee).list();
+    }
+
+    // ===============================================
+    // AVAILABILITY QUERIES
+    // ===============================================
+
+    /**
+     * Find doctors available on a specific day
      */
     public List<Doctor> findAvailableOnDay(String dayOfWeek) {
-        return entityManager.createQuery(
-                        "SELECT DISTINCT d FROM Doctor d " +
-                                "JOIN d.availabilitySlots a " +
-                                "WHERE a.dayOfWeek = :day AND a.isActive = true AND d.isActive = true " +
-                                "ORDER BY d.averageRating DESC",
-                        Doctor.class)
-                .setParameter("day", java.time.DayOfWeek.valueOf(dayOfWeek.toUpperCase()))
-                .getResultList();
+        return find("SELECT DISTINCT d FROM Doctor d " +
+                "JOIN d.availabilities a " +
+                "WHERE a.dayOfWeek = ?1 AND a.isActive = true AND d.isActive = true " +
+                "ORDER BY d.firstName", dayOfWeek).list();
+    }
+
+    /**
+     * Find doctors with availability
+     */
+    public List<Doctor> findDoctorsWithAvailability() {
+        return find("SELECT DISTINCT d FROM Doctor d " +
+                "JOIN d.availabilities a " +
+                "WHERE a.isActive = true AND d.isActive = true " +
+                "ORDER BY d.firstName").list();
+    }
+
+    // ===============================================
+    // AGGREGATION QUERIES
+    // ===============================================
+
+    /**
+     * Count active doctors
+     */
+    public long countActiveDoctors() {
+        return count("isActive = true");
     }
 
     /**
      * Count doctors by specialization
-     *
-     * @param specialization Medical specialization
-     * @return Number of active doctors in this specialization
      */
     public long countBySpecialization(String specialization) {
-        return count("LOWER(specialization) = LOWER(?1) AND isActive = true", specialization);
+        return count("specialization = ?1 AND isActive = true", specialization);
     }
 
     /**
      * Get all unique specializations
-     *
-     * @return List of distinct specializations
      */
     public List<String> getAllSpecializations() {
-        return entityManager.createQuery(
-                        "SELECT DISTINCT d.specialization FROM Doctor d " +
-                                "WHERE d.isActive = true " +
-                                "ORDER BY d.specialization",
-                        String.class)
-                .getResultList();
+        return find("SELECT DISTINCT d.specialization FROM Doctor d WHERE d.isActive = true ORDER BY d.specialization")
+                .project(String.class)
+                .list();
     }
 
     /**
-     * Find doctors by license number
-     *
-     * @param licenseNumber Medical license number
-     * @return Optional containing doctor if found
+     * Calculate average rating of all doctors
      */
-    public Optional<Doctor> findByLicenseNumber(String licenseNumber) {
-        return find("licenseNumber", licenseNumber).firstResultOptional();
+    public double calculateAverageRating() {
+        Double avg = find("SELECT AVG(d.averageRating) FROM Doctor d WHERE d.isActive = true")
+                .project(Double.class)
+                .firstResult();
+        return avg != null ? avg : 0.0;
     }
 
     /**
-     * Find doctors with availability slots
-     * (Have at least one availability slot defined)
-     *
-     * @return List of doctors with availability
+     * Calculate average experience
      */
-    public List<Doctor> findDoctorsWithAvailability() {
-        return entityManager.createQuery(
-                        "SELECT DISTINCT d FROM Doctor d " +
-                                "LEFT JOIN FETCH d.availabilitySlots a " +
-                                "WHERE a IS NOT NULL AND a.isActive = true AND d.isActive = true",
-                        Doctor.class)
-                .getResultList();
+    public double calculateAverageExperience() {
+        Double avg = find("SELECT AVG(d.yearsOfExperience) FROM Doctor d WHERE d.isActive = true")
+                .project(Double.class)
+                .firstResult();
+        return avg != null ? avg : 0.0;
     }
 
     /**
-     * Find doctors by consultation fee range
-     *
-     * @param minFee Minimum consultation fee
-     * @param maxFee Maximum consultation fee
-     * @return List of doctors within fee range
-     */
-    public List<Doctor> findByConsultationFeeRange(double minFee, double maxFee) {
-        return list("consultationFee >= ?1 AND consultationFee <= ?2 AND isActive = true " +
-                        "ORDER BY consultationFee ASC",
-                minFee, maxFee);
-    }
-
-    /**
-     * Get doctor statistics
-     * Returns array: [totalDoctors, averageRating, averageExperience]
-     *
-     * @return Object array with statistics
+     * Get doctor statistics (total, avg rating, avg experience)
      */
     public Object[] getDoctorStatistics() {
-        return entityManager.createQuery(
-                        "SELECT COUNT(d), AVG(d.averageRating), AVG(d.yearsOfExperience) " +
-                                "FROM Doctor d WHERE d.isActive = true",
-                        Object[].class)
-                .getSingleResult();
+        return (Object[]) find("SELECT " +
+                "COUNT(d), " +
+                "AVG(d.averageRating), " +
+                "AVG(d.yearsOfExperience) " +
+                "FROM Doctor d WHERE d.isActive = true")
+                .project(Object[].class)
+                .firstResult();
+    }
+
+    // ===============================================
+    // COMPLEX QUERIES
+    // ===============================================
+
+    /**
+     * Find doctors by multiple criteria
+     */
+    public List<Doctor> findByCriteria(String specialization, Double minRating, Integer minExperience,
+                                       Double maxFee) {
+        StringBuilder query = new StringBuilder("isActive = true");
+
+        if (specialization != null && !specialization.isEmpty()) {
+            query.append(" AND specialization = '").append(specialization).append("'");
+        }
+        if (minRating != null) {
+            query.append(" AND averageRating >= ").append(minRating);
+        }
+        if (minExperience != null) {
+            query.append(" AND yearsOfExperience >= ").append(minExperience);
+        }
+        if (maxFee != null) {
+            query.append(" AND consultationFee <= ").append(maxFee);
+        }
+
+        query.append(" ORDER BY averageRating DESC, yearsOfExperience DESC");
+
+        return find(query.toString()).list();
+    }
+
+    /**
+     * Search doctors with filters
+     */
+    public List<Doctor> searchWithFilters(String searchTerm, String specialization, Double minRating) {
+        StringBuilder query = new StringBuilder();
+        query.append("isActive = true");
+
+        if (searchTerm != null && !searchTerm.trim().isEmpty()) {
+            String pattern = "%" + searchTerm.toLowerCase() + "%";
+            query.append(" AND (LOWER(firstName) LIKE '").append(pattern).append("'")
+                    .append(" OR LOWER(lastName) LIKE '").append(pattern).append("')");
+        }
+
+        if (specialization != null && !specialization.isEmpty()) {
+            query.append(" AND specialization = '").append(specialization).append("'");
+        }
+
+        if (minRating != null) {
+            query.append(" AND averageRating >= ").append(minRating);
+        }
+
+        query.append(" ORDER BY averageRating DESC");
+
+        return find(query.toString()).list();
+    }
+
+    // ===============================================
+    // SORTING QUERIES
+    // ===============================================
+
+    /**
+     * Find all doctors sorted by rating
+     */
+    public List<Doctor> findAllSortedByRating() {
+        return find("isActive = true ORDER BY averageRating DESC, totalReviews DESC").list();
+    }
+
+    /**
+     * Find all doctors sorted by experience
+     */
+    public List<Doctor> findAllSortedByExperience() {
+        return find("isActive = true ORDER BY yearsOfExperience DESC, averageRating DESC").list();
+    }
+
+    /**
+     * Find all doctors sorted by name
+     */
+    public List<Doctor> findAllSortedByName() {
+        return find("isActive = true ORDER BY lastName, firstName").list();
+    }
+
+    /**
+     * Find all doctors sorted by consultation fee
+     */
+    public List<Doctor> findAllSortedByFee() {
+        return find("isActive = true ORDER BY consultationFee, averageRating DESC").list();
     }
 }
+
+
+
+
+
+
+
+
 
 
 
