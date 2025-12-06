@@ -48,6 +48,15 @@
   "roles": {
     "realm": [
       {
+        "id": "dbb6f3f8-1b80-4497-90a6-f41174b1ce76",
+        "name": "analytics:read",
+        "description": "",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "1b5543ed-dca3-4874-a544-d11ec7a9543f",
+        "attributes": {}
+      },
+      {
         "id": "98d617a1-54e7-479b-ab25-d5a62a00b1f2",
         "name": "identity:admin",
         "description": "",
@@ -87,6 +96,15 @@
         "id": "8cb1649c-6c7e-437e-8c44-616f872d9d78",
         "name": "offline_access",
         "description": "${role_offline-access}",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "1b5543ed-dca3-4874-a544-d11ec7a9543f",
+        "attributes": {}
+      },
+      {
+        "id": "977a68f6-fdef-45ce-b8fa-c64a69a039fd",
+        "name": "analytics:write",
+        "description": "",
         "composite": false,
         "clientRole": false,
         "containerId": "1b5543ed-dca3-4874-a544-d11ec7a9543f",
@@ -346,6 +364,7 @@
         }
       ],
       "security-admin-console": [],
+      "analytics-service": [],
       "api-gateway": [],
       "admin-cli": [],
       "account-console": [],
@@ -472,7 +491,9 @@
       "subGroups": [],
       "attributes": {},
       "realmRoles": [
+        "analytics:read",
         "notification:write",
+        "analytics:write",
         "notification:read",
         "ROLE_USER"
       ],
@@ -535,6 +556,24 @@
   "webAuthnPolicyPasswordlessAcceptableAaguids": [],
   "webAuthnPolicyPasswordlessExtraOrigins": [],
   "users": [
+    {
+      "id": "d3f29b54-0d88-4258-88b1-ea40d8eaecca",
+      "username": "service-account-analytics-service",
+      "emailVerified": false,
+      "enabled": true,
+      "createdTimestamp": 1765044372374,
+      "totp": false,
+      "serviceAccountClientId": "analytics-service",
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": [
+        "default-roles-basit-cz"
+      ],
+      "notBefore": 0,
+      "groups": [
+        "/users"
+      ]
+    },
     {
       "id": "81dff462-f28c-4c4a-9ab9-ccf10ced001f",
       "username": "service-account-api-gateway",
@@ -726,6 +765,81 @@
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": 0,
       "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "profile",
+        "basic",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "organization",
+        "microprofile-jwt"
+      ]
+    },
+    {
+      "id": "cd480838-183a-4f81-ad51-78783dfd41a7",
+      "clientId": "analytics-service",
+      "name": "",
+      "description": "",
+      "rootUrl": "",
+      "adminUrl": "",
+      "baseUrl": "",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "**********",
+      "redirectUris": [
+        "/*"
+      ],
+      "webOrigins": [
+        "/*"
+      ],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "realm_client": "false",
+        "oidc.ciba.grant.enabled": "false",
+        "client.secret.creation.time": "1765044372",
+        "backchannel.logout.session.required": "true",
+        "standard.token.exchange.enabled": "false",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "dpop.bound.access.tokens": "false"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "protocolMappers": [
+        {
+          "id": "a0bd9c5e-ab73-4628-be74-6439f6788fe7",
+          "name": "analytics-service-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "api-gateway",
+            "id.token.claim": "true",
+            "lightweight.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "service_account",
         "web-origins",
         "acr",
         "roles",

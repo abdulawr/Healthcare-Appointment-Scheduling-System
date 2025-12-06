@@ -12,13 +12,15 @@ INFRA_DIR := $(CURDIR)
 ENV_FILE  := $(INFRA_DIR)/.env
 NETWORK   := basit-network
 
-COMPOSE_IDENTITY    := docker-compose --env-file $(ENV_FILE) -f identity/docker-compose.identity.yml
+COMPOSE_IDENTITY     := docker-compose --env-file $(ENV_FILE) -f identity/docker-compose.identity.yml
 COMPOSE_NOTIFICATION := docker-compose --env-file $(ENV_FILE) -f notification/docker-compose.notification.yml
-COMPOSE_GATEWAY     := docker-compose --env-file $(ENV_FILE) -f api-gateway/docker-compose.api-gateway.yml
+COMPOSE_GATEWAY      := docker-compose --env-file $(ENV_FILE) -f api-gateway/docker-compose.api-gateway.yml
+COMPOSE_ANALYTICS    := docker-compose --env-file $(ENV_FILE) -f analytics/docker-compose.analytics.yml
 
 .PHONY: help network-create network-remove \
         identity-up identity-down identity-logs \
         notification-up notification-down notification-logs \
+        analytics-up analytics-down analytics-logs \
         gateway-up gateway-down gateway-logs \
         start-all stop-all logs-all
 
@@ -34,6 +36,10 @@ help:
 	@echo "  notification-up         Start Notification stack (Postgres, Kafka, service)"
 	@echo "  notification-down       Stop Notification stack"
 	@echo "  notification-logs       Follow NotificationService logs"
+	@echo
+	@echo "  analytics-up            Start Analytics stack (Postgres, Kafka, service)"
+	@echo "  analytics-down          Stop Analytics stack"
+	@echo "  analytics-logs          Follow AnalyticsService logs"
 	@echo
 	@echo "  gateway-up              Start API Gateway (Kong + oauth2-proxy)"
 	@echo "  gateway-down            Stop API Gateway"
@@ -73,6 +79,18 @@ notification-down:
 notification-logs:
 	$(COMPOSE_NOTIFICATION) logs -f notification-service
 
+# --- Analytics stack ---
+
+analytics-up: network-create
+	$(COMPOSE_ANALYTICS) up -d
+
+analytics-down:
+	$(COMPOSE_ANALYTICS) down
+
+analytics-logs:
+	$(COMPOSE_ANALYTICS) logs -f analytics-service
+
+
 # --- API Gateway (Kong + oauth2-proxy) ---
 
 gateway-up: network-create
@@ -86,9 +104,9 @@ gateway-logs:
 
 # --- Convenience targets ---
 
-start-all: identity-up notification-up gateway-up
+start-all: identity-up notification-up analytics-up gateway-up
 
-stop-all: gateway-down notification-down identity-down
+stop-all: gateway-down notification-down analytics-down identity-down
 
 logs-all:
 	@echo "=== Identity logs ==="
@@ -97,5 +115,8 @@ logs-all:
 	@echo "=== Notification logs ==="
 	$(COMPOSE_NOTIFICATION) logs --tail=50 notification-service
 	@echo
+    @echo "=== Analytics logs ==="
+    $(COMPOSE_ANALYTICS) logs --tail=50 analytics-service
+    @echo
 	@echo "=== Gateway logs ==="
 	$(COMPOSE_GATEWAY) logs --tail=50 kong

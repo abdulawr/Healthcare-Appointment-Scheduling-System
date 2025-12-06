@@ -20,15 +20,6 @@ All modules are designed for local development and can be run independently or t
 
 ## Structure
 
-```
-
-infra/
-├── api-gateway/         # Kong + oauth2-proxy configuration and declarative routes
-├── identity/            # Keycloak + Postgres with imported realm
-└── notification/        # NotificationService stack: Kafka + Zookeeper + Postgres + service container
-
-````
-
 Each directory contains its own `docker-compose.<name>.yml` and README.
 
 ---
@@ -59,7 +50,7 @@ Some services require secrets. Setup environment variables:
 
    2.1. Generate OAUTH2_PROXY_COOKIE_SECRET: `openssl rand -base64 32 | tr -- "+/" "-_"`
 
-   2.2. Get `OAUTH2_PROXY_CLIENT_SECRET` and `NOTIFICATION_OIDC_CLIENT_SECRET` from the Keycloak Admin Panel.
+   2.2. Get `OAUTH2_PROXY_CLIENT_SECRET` and `*_OIDC_CLIENT_SECRET` from the Keycloak Admin Panel.
 
    2.3. Get `NOVU_API_KEY` from the Novu admin panel.
 
@@ -99,21 +90,6 @@ Although each stack can be run individually, the typical order is:
    ```bash
    make gateway-up
    ```
-
----
-
-## Communication Overview
-
-Inside the `basit-network`, services talk via hostnames:
-
-* **Keycloak:** `identity-keycloak:8080`
-* **NotificationService:** `notification-service:8080`
-* **Kafka:** `notification-kafka:9092`
-* **Postgres:** `notification-postgres:5432`
-* **Kong:** `api-gateway:8000`
-* **oauth2-proxy:** `oauth2-proxy:4180`
-
-This ensures correct service discovery without using `localhost`.
 
 ---
 
