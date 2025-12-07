@@ -50,13 +50,11 @@
             <artifactId>quarkus-jdbc-postgresql</artifactId>
         </dependency>
 
-        <!-- STAGE 1: Kafka DISABLED - Will enable in Stage 5 -->
-        <!--
+        <!-- STAGE 2: Flyway ENABLED -->
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-smallrye-reactive-messaging-kafka</artifactId>
+            <artifactId>quarkus-flyway</artifactId>
         </dependency>
-        -->
 
         <!-- Fault Tolerance -->
         <dependency>
@@ -113,10 +111,24 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- H2 Database for Testing -->
+        <!-- H2 Database for Unit Testing -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jdbc-h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- STAGE 2: Testcontainers for Integration Testing -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>1.19.3</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>1.19.3</version>
             <scope>test</scope>
         </dependency>
 
