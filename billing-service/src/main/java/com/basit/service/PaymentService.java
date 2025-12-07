@@ -14,9 +14,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Service layer for Payment business logic
- */
 @ApplicationScoped
 public class PaymentService {
 
@@ -26,113 +23,85 @@ public class PaymentService {
     @Inject
     InvoiceRepository invoiceRepository;
 
-    /**
-     * Process a new payment
-     */
+    @Inject
+    InvoiceService invoiceService;
+
     @Transactional
     public Payment processPayment(Payment payment) {
-        // Check for duplicate payment using idempotency key
-        if (payment.idempotencyKey != null &&
-                paymentRepository.existsByIdempotencyKey(payment.idempotencyKey)) {
-            // Return existing payment
-            return paymentRepository.findByIdempotencyKey(payment.idempotencyKey)
-                    .orElseThrow();
+        // Check for duplicate using idempotency key
+        if (payment.idempotencyKey != null) {
+            Payment existing = paymentRepository.findByIdempotencyKey(payment.idempotencyKey).orElse(null);
+            if (existing != null) {
+                return existing; // Return existing payment, idempotent behavior
+            }
         }
 
-        // Generate idempotency key if not provided
-        if (payment.idempotencyKey == null) {
-            payment.idempotencyKey = UUID.randomUUID().toString();
-        }
-
-        // Get the invoice
+        // Get invoice to validate
         Invoice invoice = invoiceRepository.findById(payment.invoiceId);
         if (invoice == null) {
-            throw new RuntimeException("Invoice not found with id: " + payment.invoiceId);
+            throw new IllegalArgumentException("Invoice not found");
         }
 
-        // Validate payment amount
-        if (payment.amount.compareTo(invoice.amountDue) > 0) {
+        // Validate payment amount doesn't exceed amount due
+        BigDecimal amountDue = invoice.totalAmount.subtract(invoice.amountPaid);
+        if (payment.amount.compareTo(amountDue) > 0) {
             throw new IllegalArgumentException("Payment amount exceeds amount due");
         }
 
-        // Set initial status
-        payment.status = PaymentStatus.PROCESSING;
+        // Generate transaction ID if not present
+        if (payment.transactionId == null || payment.transactionId.isEmpty()) {
+            payment.transactionId = "TXN-" + UUID.randomUUID().toString();
+        }
 
-        // Persist payment (onCreate() will be called automatically by @PrePersist)
+        // Set payment status and processed time
+        payment.status = PaymentStatus.COMPLETED;
+        payment.processedAt = LocalDateTime.now();
+
+        // Persist payment
         paymentRepository.persist(payment);
 
-        try {
-            // TODO: Integrate with payment gateway (Stripe/PayPal)
-            // For now, simulate successful payment
-            payment.markCompleted();
-            payment.transactionId = "TXN-" + UUID.randomUUID().toString();
-            payment.processedAt = LocalDateTime.now();
-
-            // Update invoice
-            invoice.recordPayment(payment.amount);
-
-        } catch (Exception e) {
-            payment.markFailed("Payment processing failed: " + e.getMessage());
-            throw new RuntimeException("Payment failed", e);
-        }
+        // Update invoice with payment
+        invoiceService.recordPayment(invoice.id, payment.amount);
 
         return payment;
     }
 
-    /**
-     * Get payment by ID
-     */
     public Payment getPaymentById(Long id) {
-        return paymentRepository.findByIdOptional(id)
-                .orElseThrow(() -> new RuntimeException("Payment not found with id: " + id));
+        Payment payment = paymentRepository.findById(id);
+        if (payment == null) {
+            throw new RuntimeException("Payment not found with id: " + id);
+        }
+        return payment;
     }
 
-    /**
-     * Get payment by transaction ID
-     */
     public Payment getPaymentByTransactionId(String transactionId) {
-        return paymentRepository.findByTransactionId(transactionId)
-                .orElseThrow(() -> new RuntimeException("Payment not found with transaction ID: " + transactionId));
+        Payment payment = paymentRepository.findByTransactionId(transactionId).orElse(null);
+        if (payment == null) {
+            throw new RuntimeException("Payment not found with transaction ID: " + transactionId);
+        }
+        return payment;
     }
 
-    /**
-     * Get all payments for an invoice
-     */
     public List<Payment> getPaymentsByInvoiceId(Long invoiceId) {
         return paymentRepository.findByInvoiceId(invoiceId);
     }
 
-    /**
-     * Get all payments for a patient
-     */
     public List<Payment> getPaymentsByPatientId(Long patientId) {
         return paymentRepository.findByPatientId(patientId);
     }
 
-    /**
-     * Get successful payments
-     */
     public List<Payment> getSuccessfulPayments() {
-        return paymentRepository.findSuccessfulPayments();
+        return paymentRepository.findByStatus(PaymentStatus.COMPLETED);
     }
 
-    /**
-     * Get failed payments
-     */
     public List<Payment> getFailedPayments() {
-        return paymentRepository.findFailedPayments();
+        return paymentRepository.findByStatus(PaymentStatus.FAILED);
     }
 
-    /**
-     * Get pending payments
-     */
     public List<Payment> getPendingPayments() {
-        return paymentRepository.findPendingPayments();
+        return paymentRepository.findByStatus(PaymentStatus.PENDING);
     }
 
-    /**
-     * Retry failed payment
-     */
     @Transactional
     public Payment retryPayment(Long paymentId) {
         Payment payment = getPaymentById(paymentId);
@@ -141,89 +110,63 @@ public class PaymentService {
             throw new IllegalStateException("Only failed payments can be retried");
         }
 
+        // Reset status and retry
         payment.status = PaymentStatus.PROCESSING;
 
-        try {
-            // TODO: Retry payment gateway call
-            payment.markCompleted();
-            payment.processedAt = LocalDateTime.now();
-
-            // Update invoice
-            Invoice invoice = invoiceRepository.findById(payment.invoiceId);
-            invoice.recordPayment(payment.amount);
-
-        } catch (Exception e) {
-            payment.markFailed("Retry failed: " + e.getMessage());
-            throw new RuntimeException("Payment retry failed", e);
-        }
+        // TODO: Integrate with payment gateway
+        // For now, mark as completed
+        payment.status = PaymentStatus.COMPLETED;
+        payment.processedAt = LocalDateTime.now();
 
         return payment;
     }
 
-    /**
-     * Calculate total payments for invoice
-     */
     public BigDecimal calculateTotalPaymentsForInvoice(Long invoiceId) {
-        BigDecimal total = paymentRepository.calculateTotalForInvoice(invoiceId);
-        return total != null ? total : BigDecimal.ZERO;
+        List<Payment> payments = paymentRepository.findByInvoiceId(invoiceId);
+        return payments.stream()
+                .filter(p -> p.status == PaymentStatus.COMPLETED)
+                .map(p -> p.amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    /**
-     * Calculate total payments for patient
-     */
     public BigDecimal calculateTotalPaymentsForPatient(Long patientId) {
-        BigDecimal total = paymentRepository.calculateTotalForPatient(patientId);
-        return total != null ? total : BigDecimal.ZERO;
+        List<Payment> payments = paymentRepository.findByPatientId(patientId);
+        return payments.stream()
+                .filter(p -> p.status == PaymentStatus.COMPLETED)
+                .map(p -> p.amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    /**
-     * Get refundable payments
-     */
-    public List<Payment> getRefundablePayments() {
-        return paymentRepository.findRefundablePayments();
-    }
-
-    /**
-     * Check if payment can be refunded
-     */
     public boolean canRefund(Long paymentId) {
         Payment payment = getPaymentById(paymentId);
-        return payment.canBeRefunded();
+
+        if (payment.status != PaymentStatus.COMPLETED) {
+            return false;
+        }
+
+        BigDecimal refundableAmount = getRefundableAmount(paymentId);
+        return refundableAmount.compareTo(BigDecimal.ZERO) > 0;
     }
 
-    /**
-     * Get refundable amount for payment
-     */
     public BigDecimal getRefundableAmount(Long paymentId) {
         Payment payment = getPaymentById(paymentId);
-        return payment.getRefundableAmount();
+
+        if (payment.status != PaymentStatus.COMPLETED) {
+            return BigDecimal.ZERO;
+        }
+
+        return payment.amount.subtract(payment.refundedAmount);
     }
 
-    /**
-     * Get recently processed payments
-     */
-    public List<Payment> getRecentlyProcessedPayments(int days) {
-        return paymentRepository.findRecentlyProcessed(days);
+    public List<Payment> getRefundablePayments(Long invoiceId) {
+        List<Payment> payments = getPaymentsByInvoiceId(invoiceId);
+        return payments.stream()
+                .filter(p -> p.status == PaymentStatus.COMPLETED)
+                .filter(p -> p.refundedAmount.compareTo(p.amount) < 0)
+                .toList();
     }
 
-    /**
-     * Get all payments
-     */
-    public List<Payment> getAllPayments() {
-        return paymentRepository.listAll();
-    }
-
-    /**
-     * Count payments by status
-     */
-    public long countByStatus(PaymentStatus status) {
-        return paymentRepository.countByStatus(status);
-    }
-
-    /**
-     * Verify payment exists with idempotency key
-     */
     public boolean existsByIdempotencyKey(String idempotencyKey) {
-        return paymentRepository.existsByIdempotencyKey(idempotencyKey);
+        return paymentRepository.findByIdempotencyKey(idempotencyKey).isPresent();
     }
 }

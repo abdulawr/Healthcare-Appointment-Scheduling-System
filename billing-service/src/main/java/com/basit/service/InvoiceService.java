@@ -13,240 +13,229 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * Service layer for Invoice business logic
- */
 @ApplicationScoped
 public class InvoiceService {
 
     @Inject
     InvoiceRepository invoiceRepository;
 
-    /**
-     * Create a new invoice
-     */
     @Transactional
     public Invoice createInvoice(Invoice invoice) {
-        // Set default status if not set
+        // Initialize status if not set
         if (invoice.status == null) {
             invoice.status = InvoiceStatus.DRAFT;
         }
 
-        // Calculate amounts
-        invoice.calculateAmounts();
+        // Initialize amounts if not set
+        if (invoice.amountPaid == null) {
+            invoice.amountPaid = BigDecimal.ZERO;
+        }
 
-        // Persist invoice (onCreate() will be called automatically by @PrePersist)
+        // Calculate totals manually (invoice might not have calculateTotals method)
+        invoice.subtotal = invoice.items.stream()
+                .map(item -> item.unitPrice.multiply(BigDecimal.valueOf(item.quantity)))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        invoice.totalAmount = invoice.subtotal
+                .add(invoice.taxAmount != null ? invoice.taxAmount : BigDecimal.ZERO)
+                .subtract(invoice.discountAmount != null ? invoice.discountAmount : BigDecimal.ZERO);
+
         invoiceRepository.persist(invoice);
-
         return invoice;
     }
 
-    /**
-     * Get invoice by ID
-     */
     public Invoice getInvoiceById(Long id) {
-        return invoiceRepository.findByIdOptional(id)
-                .orElseThrow(() -> new RuntimeException("Invoice not found with id: " + id));
+        Invoice invoice = invoiceRepository.findById(id);
+        if (invoice == null) {
+            throw new RuntimeException("Invoice not found with id: " + id);
+        }
+        return invoice;
     }
 
-    /**
-     * Get invoice by invoice number
-     */
     public Invoice getInvoiceByNumber(String invoiceNumber) {
-        return invoiceRepository.findByInvoiceNumber(invoiceNumber)
-                .orElseThrow(() -> new RuntimeException("Invoice not found with number: " + invoiceNumber));
+        Invoice invoice = invoiceRepository.findByInvoiceNumber(invoiceNumber).orElse(null);
+        if (invoice == null) {
+            throw new RuntimeException("Invoice not found with number: " + invoiceNumber);
+        }
+        return invoice;
     }
 
-    /**
-     * Get all invoices for a patient
-     */
-    public List<Invoice> getInvoicesByPatientId(Long patientId) {
-        return invoiceRepository.findByPatientId(patientId);
+    public List<Invoice> getInvoicesByPatientId(Long patientId, int page, int size) {
+        return invoiceRepository.findByPatientId(patientId, Page.of(page, size));
     }
 
-    /**
-     * Get invoices for a patient with pagination
-     */
-    public List<Invoice> getInvoicesByPatientId(Long patientId, int pageIndex, int pageSize) {
-        return invoiceRepository.findByPatientId(patientId, Page.of(pageIndex, pageSize));
-    }
-
-    /**
-     * Update invoice
-     */
     @Transactional
-    public Invoice updateInvoice(Long id, Invoice updatedInvoice) {
+    public Invoice updateInvoice(Long id, Invoice updateData) {
         Invoice invoice = getInvoiceById(id);
 
-        // Update fields
-        if (updatedInvoice.dueDate != null) {
-            invoice.dueDate = updatedInvoice.dueDate;
-        }
-        if (updatedInvoice.taxAmount != null) {
-            invoice.taxAmount = updatedInvoice.taxAmount;
-        }
-        if (updatedInvoice.discountAmount != null) {
-            invoice.discountAmount = updatedInvoice.discountAmount;
-        }
-        if (updatedInvoice.notes != null) {
-            invoice.notes = updatedInvoice.notes;
+        // Only allow updates to DRAFT invoices
+        if (invoice.status != InvoiceStatus.DRAFT) {
+            throw new IllegalStateException("Can only update DRAFT invoices");
         }
 
-        // Recalculate amounts
-        invoice.calculateAmounts();
-        // onUpdate() will be called automatically by @PreUpdate
+        // Update allowed fields
+        if (updateData.dueDate != null) {
+            invoice.dueDate = updateData.dueDate;
+        }
+        if (updateData.taxAmount != null) {
+            invoice.taxAmount = updateData.taxAmount;
+        }
+        if (updateData.discountAmount != null) {
+            invoice.discountAmount = updateData.discountAmount;
+        }
+        if (updateData.notes != null) {
+            invoice.notes = updateData.notes;
+        }
+
+        // Recalculate totals
+        invoice.subtotal = invoice.items.stream()
+                .map(item -> item.unitPrice.multiply(BigDecimal.valueOf(item.quantity)))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        invoice.totalAmount = invoice.subtotal
+                .add(invoice.taxAmount)
+                .subtract(invoice.discountAmount);
 
         return invoice;
     }
 
-    /**
-     * Add item to invoice
-     */
     @Transactional
     public Invoice addItemToInvoice(Long invoiceId, InvoiceItem item) {
         Invoice invoice = getInvoiceById(invoiceId);
 
-        // Ensure invoice is still in DRAFT status
+        // Only allow adding items to DRAFT invoices
         if (invoice.status != InvoiceStatus.DRAFT) {
-            throw new IllegalStateException("Can only add items to draft invoices");
+            throw new IllegalStateException("Can only add items to DRAFT invoices");
         }
 
-        invoice.addItem(item);
+        item.invoice = invoice;
+        invoice.items.add(item);
+
+        // Recalculate totals
+        invoice.subtotal = invoice.items.stream()
+                .map(i -> i.unitPrice.multiply(BigDecimal.valueOf(i.quantity)))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        invoice.totalAmount = invoice.subtotal
+                .add(invoice.taxAmount)
+                .subtract(invoice.discountAmount);
 
         return invoice;
     }
 
-    /**
-     * Remove item from invoice
-     */
     @Transactional
     public Invoice removeItemFromInvoice(Long invoiceId, Long itemId) {
         Invoice invoice = getInvoiceById(invoiceId);
 
-        // Ensure invoice is still in DRAFT status
+        // Only allow removing items from DRAFT invoices
         if (invoice.status != InvoiceStatus.DRAFT) {
-            throw new IllegalStateException("Can only remove items from draft invoices");
+            throw new IllegalStateException("Can only remove items from DRAFT invoices");
         }
 
-        InvoiceItem itemToRemove = invoice.items.stream()
-                .filter(item -> item.id.equals(itemId))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Item not found"));
+        invoice.items.removeIf(item -> item.id.equals(itemId));
 
-        invoice.removeItem(itemToRemove);
+        // Recalculate totals
+        invoice.subtotal = invoice.items.stream()
+                .map(item -> item.unitPrice.multiply(BigDecimal.valueOf(item.quantity)))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        invoice.totalAmount = invoice.subtotal
+                .add(invoice.taxAmount)
+                .subtract(invoice.discountAmount);
 
         return invoice;
     }
 
-    /**
-     * Issue invoice (change from DRAFT to ISSUED)
-     */
     @Transactional
-    public Invoice issueInvoice(Long invoiceId) {
-        Invoice invoice = getInvoiceById(invoiceId);
+    public Invoice issueInvoice(Long id) {
+        Invoice invoice = getInvoiceById(id);
 
+        // Validate invoice can be issued
         if (invoice.status != InvoiceStatus.DRAFT) {
-            throw new IllegalStateException("Only draft invoices can be issued");
+            throw new IllegalStateException("Only DRAFT invoices can be issued");
         }
 
-        if (invoice.items == null || invoice.items.isEmpty()) {
+        if (invoice.items.isEmpty()) {
             throw new IllegalStateException("Cannot issue invoice without items");
         }
 
-        invoice.updateStatus();
+        if (invoice.subtotal.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Cannot issue invoice with zero or negative subtotal");
+        }
+
         invoice.status = InvoiceStatus.ISSUED;
 
         return invoice;
     }
 
-    /**
-     * Record payment against invoice
-     */
     @Transactional
-    public Invoice recordPayment(Long invoiceId, BigDecimal amount) {
-        Invoice invoice = getInvoiceById(invoiceId);
-        invoice.recordPayment(amount);
+    public Invoice recordPayment(Long id, BigDecimal paymentAmount) {
+        Invoice invoice = getInvoiceById(id);
+
+        if (invoice.status != InvoiceStatus.ISSUED &&
+                invoice.status != InvoiceStatus.PARTIALLY_PAID &&
+                invoice.status != InvoiceStatus.OVERDUE) {
+            throw new IllegalStateException("Cannot record payment for invoice in status: " + invoice.status);
+        }
+
+        invoice.amountPaid = invoice.amountPaid.add(paymentAmount);
+
+        // Update status based on payment
+        BigDecimal remaining = invoice.totalAmount.subtract(invoice.amountPaid);
+        if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
+            invoice.status = InvoiceStatus.PAID;
+        } else {
+            invoice.status = InvoiceStatus.PARTIALLY_PAID;
+        }
+
         return invoice;
     }
 
-    /**
-     * Get overdue invoices
-     */
     public List<Invoice> getOverdueInvoices() {
         return invoiceRepository.findOverdueInvoices();
     }
 
-    /**
-     * Get invoices by status
-     */
     public List<Invoice> getInvoicesByStatus(InvoiceStatus status) {
         return invoiceRepository.findByStatus(status);
     }
 
-    /**
-     * Get unpaid invoices for patient
-     */
     public List<Invoice> getUnpaidInvoicesByPatientId(Long patientId) {
         return invoiceRepository.findUnpaidByPatientId(patientId);
     }
 
-    /**
-     * Calculate outstanding amount for patient
-     */
     public BigDecimal calculateOutstandingAmount(Long patientId) {
-        BigDecimal amount = invoiceRepository.calculateOutstandingAmountForPatient(patientId);
-        return amount != null ? amount : BigDecimal.ZERO;
+        List<Invoice> unpaidInvoices = invoiceRepository.findUnpaidByPatientId(patientId);
+        return unpaidInvoices.stream()
+                .map(invoice -> invoice.totalAmount.subtract(invoice.amountPaid))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    /**
-     * Cancel invoice
-     */
     @Transactional
-    public Invoice cancelInvoice(Long invoiceId, String reason) {
-        Invoice invoice = getInvoiceById(invoiceId);
+    public Invoice cancelInvoice(Long id, String reason) {
+        Invoice invoice = getInvoiceById(id);
 
-        if (invoice.status == InvoiceStatus.PAID) {
-            throw new IllegalStateException("Cannot cancel paid invoice");
+        if (invoice.status == InvoiceStatus.PAID || invoice.status == InvoiceStatus.CANCELLED) {
+            throw new IllegalStateException("Cannot cancel invoice in status: " + invoice.status);
         }
 
         invoice.status = InvoiceStatus.CANCELLED;
-        invoice.notes = (invoice.notes != null ? invoice.notes + "; " : "") + "CANCELLED: " + reason;
+        invoice.notes = (invoice.notes != null ? invoice.notes + "\n" : "") +
+                "CANCELLED: " + reason;
 
         return invoice;
     }
 
-    /**
-     * Get recently issued invoices
-     */
-    public List<Invoice> getRecentlyIssuedInvoices(int days) {
-        return invoiceRepository.findRecentlyIssued(days);
-    }
-
-    /**
-     * Delete invoice (only DRAFT invoices)
-     */
     @Transactional
-    public void deleteInvoice(Long invoiceId) {
-        Invoice invoice = getInvoiceById(invoiceId);
+    public void deleteInvoice(Long id) {
+        Invoice invoice = getInvoiceById(id);
 
+        // Only allow deletion of DRAFT invoices
         if (invoice.status != InvoiceStatus.DRAFT) {
-            throw new IllegalStateException("Can only delete draft invoices");
+            throw new IllegalStateException("Can only delete DRAFT invoices");
         }
 
         invoiceRepository.delete(invoice);
     }
-
-    /**
-     * Get all invoices
-     */
-    public List<Invoice> getAllInvoices() {
-        return invoiceRepository.listAll();
-    }
-
-    /**
-     * Count invoices by status
-     */
-    public long countByStatus(InvoiceStatus status) {
-        return invoiceRepository.countByStatus(status);
-    }
 }
+
+

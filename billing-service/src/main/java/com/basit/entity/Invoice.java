@@ -53,8 +53,7 @@ public class Invoice extends PanacheEntityBase {
     public LocalDate dueDate;
 
     @NotNull(message = "Subtotal is required")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Subtotal must be greater than 0")
-    @Column(nullable = false, precision = 10, scale = 2)
+    @DecimalMin(value = "0.00", message = "Subtotal must be non-negative")
     public BigDecimal subtotal;
 
     @NotNull(message = "Tax amount is required")
