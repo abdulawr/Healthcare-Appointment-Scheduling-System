@@ -1,4 +1,10 @@
 package com.basit.constant;
 
-public class InvoiceStatus {
+public enum InvoiceStatus {
+    PENDING,
+    PARTIALLY_PAID,
+    PAID,
+    OVERDUE,
+    CANCELLED,
+    REFUNDED
 }

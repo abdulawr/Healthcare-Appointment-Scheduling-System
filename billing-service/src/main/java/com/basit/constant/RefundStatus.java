@@ -1,4 +1,9 @@
 package com.basit.constant;
 
-public class RefundStatus {
+public enum RefundStatus {
+    PENDING,
+    PROCESSING,
+    COMPLETED,
+    FAILED,
+    CANCELLED
 }

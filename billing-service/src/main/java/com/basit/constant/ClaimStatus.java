@@ -1,4 +1,10 @@
 package com.basit.constant;
 
-public class ClaimStatus {
+public enum ClaimStatus {
+    SUBMITTED,
+    UNDER_REVIEW,
+    APPROVED,
+    PARTIALLY_APPROVED,
+    REJECTED,
+    APPEALED
 }
