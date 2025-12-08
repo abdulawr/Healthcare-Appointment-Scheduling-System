@@ -1,9 +1,9 @@
 CREATE TABLE fact_appointment (
                                   id                 BIGSERIAL PRIMARY KEY,
-                                  appointment_id     UUID NOT NULL,
-                                  doctor_id          UUID NOT NULL,
-                                  patient_id         UUID NOT NULL,
-                                  status             VARCHAR(50) NOT NULL, -- BOOKED, COMPLETED, CANCELLED
+                                  appointment_id     BIGINT NOT NULL,
+                                  doctor_id          BIGINT NOT NULL,
+                                  patient_id         BIGINT NOT NULL,
+                                  status             VARCHAR(50) NOT NULL,
                                   start_time         TIMESTAMP WITH TIME ZONE NOT NULL,
                                   end_time           TIMESTAMP WITH TIME ZONE,
                                   booking_time       TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -24,7 +24,7 @@ CREATE INDEX idx_fact_appointment_event_time ON fact_appointment(event_time);
 
 CREATE TABLE analytics_report (
                                   id          BIGSERIAL PRIMARY KEY,
-                                  report_id   UUID NOT NULL UNIQUE,
+                                  report_id   BIGINT NOT NULL UNIQUE,
                                   name        VARCHAR(255) NOT NULL,
                                   parameters  JSONB NOT NULL,
                                   status      VARCHAR(50) NOT NULL, -- PENDING, COMPLETED, FAILED

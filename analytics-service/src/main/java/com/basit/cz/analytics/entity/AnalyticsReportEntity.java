@@ -3,7 +3,6 @@ package com.basit.cz.analytics.entity;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "analytics_report")
@@ -14,7 +13,7 @@ public class AnalyticsReportEntity extends PanacheEntityBase {
     public Long id;
 
     @Column(name = "report_id", nullable = false, unique = true)
-    public UUID reportId;
+    public Long reportId;
 
     @Column(nullable = false)
     public String name;

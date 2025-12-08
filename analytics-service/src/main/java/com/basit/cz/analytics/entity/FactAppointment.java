@@ -3,7 +3,7 @@ package com.basit.cz.analytics.entity;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
-import java.util.UUID;
+
 
 @Entity
 @Table(name = "fact_appointment")
@@ -14,13 +14,13 @@ public class FactAppointment extends PanacheEntityBase {
     public Long id;
 
     @Column(name = "appointment_id", nullable = false)
-    public UUID appointmentId;
+    public Long appointmentId;
 
     @Column(name = "doctor_id", nullable = false)
-    public UUID doctorId;
+    public Long doctorId;
 
     @Column(name = "patient_id", nullable = false)
-    public UUID patientId;
+    public Long patientId;
 
     @Column(nullable = false)
     public String status;  // BOOKED, COMPLETED, CANCELLED
