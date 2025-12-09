@@ -54,7 +54,8 @@ public class InvoiceResourceTest {
                 .post("/api/billing/invoices")
                 .then()
                 .statusCode(201)
-                .extract().path("id");
+                .extract().jsonPath().getLong("id");
+
 
         given()
                 .pathParam("id", invoiceId)

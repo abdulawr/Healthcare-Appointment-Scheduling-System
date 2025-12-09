@@ -17,12 +17,34 @@ import static org.junit.jupiter.api.Assertions.*;
 public class PaymentRepositoryTest {
 
     @Inject
+    InvoiceRepository invoiceRepository;
+
+    @Inject
     PaymentRepository paymentRepository;
+
+    @Inject
+    PaymentMethodRepository paymentMethodRepository;
+
+    @Inject
+    InsuranceClaimRepository insuranceClaimRepository;
+
+    @Inject
+    RefundRepository refundRepository;
+
 
     @BeforeEach
     @Transactional
     public void setup() {
+        // Delete children FIRST (to avoid foreign key constraint violations)
         paymentRepository.deleteAll();
+        refundRepository.deleteAll();
+        insuranceClaimRepository.deleteAll();
+
+        // Delete parent LAST
+        invoiceRepository.deleteAll();
+
+        // Delete independent entities
+        paymentMethodRepository.deleteAll();
     }
 
     @Test

@@ -359,7 +359,7 @@ public class PaymentMethodResourceTest {
                 .post("/api/billing/payment-methods")
                 .then()
                 .statusCode(201)
-                .extract().path("id");
+                .extract().jsonPath().getLong("id");
     }
 
     private Long createPaymentMethodWithToken(Long patientId, String token) {
@@ -373,7 +373,7 @@ public class PaymentMethodResourceTest {
                 .post("/api/billing/payment-methods")
                 .then()
                 .statusCode(201)
-                .extract().path("id");
+                .extract().jsonPath().getLong("id");
     }
 
     private PaymentMethodRequest createRequest(Long patientId, PaymentMethodType type) {

@@ -137,7 +137,8 @@ public class RefundResourceTest {
                 .post("/api/billing/refunds")
                 .then()
                 .statusCode(201)
-                .extract().path("id");
+                .extract().jsonPath().getLong("id");
+
 
         given()
                 .pathParam("id", refundId)

@@ -334,7 +334,8 @@ public class InsuranceResourceTest {
                 .post("/api/billing/insurance/claim")
                 .then()
                 .statusCode(201)
-                .extract().path("id");
+                .extract().jsonPath().getLong("id");
+
     }
 
     private String createClaimAndGetNumber(Long invoiceId) {
