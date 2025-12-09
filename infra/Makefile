@@ -16,12 +16,14 @@ COMPOSE_IDENTITY     := docker-compose --env-file $(ENV_FILE) -f identity/docker
 COMPOSE_NOTIFICATION := docker-compose --env-file $(ENV_FILE) -f notification/docker-compose.notification.yml
 COMPOSE_GATEWAY      := docker-compose --env-file $(ENV_FILE) -f api-gateway/docker-compose.api-gateway.yml
 COMPOSE_ANALYTICS    := docker-compose --env-file $(ENV_FILE) -f analytics/docker-compose.analytics.yml
+COMPOSE_MONITORING   := docker-compose --env-file $(ENV_FILE) -f monitoring/docker-compose.monitoring.yml
 
 .PHONY: help network-create network-remove \
         identity-up identity-down identity-logs \
         notification-up notification-down notification-logs \
         analytics-up analytics-down analytics-logs \
         gateway-up gateway-down gateway-logs \
+        monitoring-up monitoring-down monitoring-logs \
         start-all stop-all logs-all
 
 help:
@@ -44,6 +46,10 @@ help:
 	@echo "  gateway-up              Start API Gateway (Kong + oauth2-proxy)"
 	@echo "  gateway-down            Stop API Gateway"
 	@echo "  gateway-logs            Follow Kong logs"
+	@echo
+	@echo "  monitoring-up           Start Monitoring stack"
+	@echo "  monitoring-down         Stop Monitoring stack"
+	@echo "  monitoring-logs         Follow Monitoring stack logs"
 	@echo
 	@echo "  start-all               Start identity, notification, and gateway"
 	@echo "  stop-all                Stop all infra stacks"
@@ -102,21 +108,20 @@ gateway-down:
 gateway-logs:
 	$(COMPOSE_GATEWAY) logs -f kong
 
+# --- Monitoring ---
+
+monitoring-up: network-create
+	$(COMPOSE_MONITORING) up -d
+
+monitoring-down:
+	$(COMPOSE_MONITORING) down
+
+monitoring-logs:
+	$(COMPOSE_MONITORING) logs -f kong
+
 # --- Convenience targets ---
 
-start-all: identity-up notification-up analytics-up gateway-up
+start-all: identity-up notification-up analytics-up monitoring-up gateway-up
 
-stop-all: gateway-down notification-down analytics-down identity-down
+stop-all: gateway-down notification-down analytics-down monitoring-down identity-down
 
-logs-all:
-	@echo "=== Identity logs ==="
-	$(COMPOSE_IDENTITY) logs --tail=50
-	@echo
-	@echo "=== Notification logs ==="
-	$(COMPOSE_NOTIFICATION) logs --tail=50 notification-service
-	@echo
-    @echo "=== Analytics logs ==="
-    $(COMPOSE_ANALYTICS) logs --tail=50 analytics-service
-    @echo
-	@echo "=== Gateway logs ==="
-	$(COMPOSE_GATEWAY) logs --tail=50 kong
