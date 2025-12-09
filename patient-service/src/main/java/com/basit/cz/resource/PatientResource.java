@@ -543,5 +543,3 @@ public class PatientResource {
         return Response.ok(CommunicationPreferenceDTO.Response.fromEntity(pref)).build();
     }
 }
-
-
