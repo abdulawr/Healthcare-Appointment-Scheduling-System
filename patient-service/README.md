@@ -9,12 +9,11 @@ A production-ready microservice for managing patient information in a healthcare
 [![Quarkus](https://img.shields.io/badge/Quarkus-3.17.0-blue)]()
 [![Docker](https://img.shields.io/badge/Docker-ready-blue)]()
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)]()
+[![Self-Healing](https://img.shields.io/badge/Self--Healing-enabled-brightgreen)]()
 
 > **Academic Project** - Masaryk University, Software System Development Course
 
 ---
-
-
 
 ## 🎯 Overview
 
@@ -27,18 +26,31 @@ The **Patient Service** is a core microservice in the Healthcare Appointment Sch
 - **4 Database Tables** - Normalized relational design
 - **4 Entities** - Patient, Insurance, MedicalRecord, CommunicationPreference
 - **~8,500 Lines of Code** - Production-ready implementation
+- **🛡️ Self-Healing Enabled** - Automatic failure recovery with fault tolerance
+
+### 🆕 Self-Healing Capabilities
+
+**Built-in resilience patterns** for production-grade fault tolerance:
+
+- ✅ **@Retry** - Automatic retry on transient failures (3-6 retries)
+- ✅ **@Timeout** - Prevents operations from hanging (3-10 seconds)
+- ✅ **@CircuitBreaker** - Stops cascading failures (opens at 40-50% failure rate)
+- ✅ **@Fallback** - Provides degraded responses when operations fail
+- ✅ **@Bulkhead** - Isolates failures and prevents resource exhaustion (5-10 concurrent)
+
+**See [Self-Healing Guide](#-self-healing-architecture) for details.**
 
 ### Project Context
 
-Developed as a university project at **Masaryk University** in the Software System Development course, demonstrating microservice architecture, RESTful API design, database modeling, and DevOps practices.
+Developed as a university project at **Masaryk University** in the Software System Development course, demonstrating microservice architecture, RESTful API design, database modeling, DevOps practices, and **production-grade resilience patterns**.
 
 ---
 
 ## 🏗️ Architecture
 
-### Layered Architecture
+### Layered Architecture with Self-Healing
 
-The service follows a **4-layer architecture** for clean separation of concerns:
+The service follows a **4-layer architecture** with **SmallRye Fault Tolerance** for self-healing:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -53,12 +65,17 @@ The service follows a **4-layer architecture** for clean separation of concerns:
                      │
                      ↓
 ┌─────────────────────────────────────────────────────────┐
-│                   Service Layer                         │
+│            Service Layer (SELF-HEALING) 🛡️             │
 │              (PatientService.java)                      │
 │  • Business Logic                                       │
 │  • DTO ↔ Entity Conversion                             │
 │  • Validation Rules (email uniqueness, etc.)            │
 │  • Transaction Management (@Transactional)              │
+│  • @Retry - Automatic retry on failures                │
+│  • @Timeout - Operation time limits                    │
+│  • @CircuitBreaker - Cascading failure prevention      │
+│  • @Fallback - Degraded response handling              │
+│  • @Bulkhead - Resource isolation                      │
 └────────────────────┬────────────────────────────────────┘
                      │
                      ↓
@@ -93,6 +110,302 @@ The service follows a **4-layer architecture** for clean separation of concerns:
 - **Active Record** - Simplified ORM with Panache
 - **Dependency Injection** - @Inject for loose coupling
 - **Builder Pattern** - DTO construction (static factory methods)
+- **🆕 Retry Pattern** - Automatic retry on transient failures
+- **🆕 Circuit Breaker Pattern** - Prevent cascading failures
+- **🆕 Bulkhead Pattern** - Resource isolation and failure containment
+- **🆕 Timeout Pattern** - Operation time limiting
+- **🆕 Fallback Pattern** - Graceful degradation
+
+---
+
+## 🛡️ Self-Healing Architecture
+
+### What is Self-Healing?
+
+The Patient Service automatically **detects and recovers from failures** without manual intervention, making it highly resilient and production-ready.
+
+### Fault Tolerance Patterns Applied
+
+#### 1. **Retry Pattern** ♻️
+
+Automatically retries failed operations caused by transient issues.
+
+**Applied to:**
+- `registerPatient()` - 3 retries with 500ms delay + jitter
+- `getPatient()` - 2 retries with 200ms delay
+- `updatePatient()` - 3 retries with 500ms delay
+- `deactivatePatient()` - 2 retries with 300ms delay
+- `searchPatients()` - 2 retries with 500ms delay
+- `getActivePatientCount()` - 3 retries with 200ms delay
+
+**Example:**
+```
+Attempt 1: Database timeout ❌
+Wait 500ms...
+Attempt 2: Still down ❌
+Wait 500ms...
+Attempt 3: Success! ✅
+```
+
+---
+
+#### 2. **Timeout Pattern** ⏱️
+
+Prevents operations from hanging indefinitely.
+
+**Timeout Configuration:**
+- `registerPatient()` - 5 seconds
+- `getPatient()` - 3 seconds
+- `updatePatient()` - 5 seconds
+- `deactivatePatient()` - 3 seconds
+- `searchPatients()` - 5 seconds
+- `getAllActivePatients()` - 10 seconds (bulk operation)
+- `getActivePatientCount()` - 3 seconds
+
+**Benefit:** Prevents thread starvation and ensures responsive API.
+
+---
+
+#### 3. **Circuit Breaker Pattern** 🔴
+
+Stops calling failing services to prevent cascading failures.
+
+**Applied to:**
+- `getPatient()` - Opens after 40% failure rate (10 requests)
+- `searchPatients()` - Opens after 50% failure rate (10 requests)
+- `getAllActivePatients()` - Opens after 60% failure rate (5 requests)
+
+**Circuit States:**
+
+```
+CLOSED (Normal Operation)
+  ↓ (4 failures out of 10 requests)
+OPEN (All requests fail immediately)
+  ↓ (Wait 5-15 seconds)
+HALF_OPEN (Test with limited requests)
+  ↓ (3 successful requests)
+CLOSED (Back to normal)
+```
+
+**Benefit:** Protects downstream services and enables fast failure.
+
+---
+
+#### 4. **Fallback Pattern** 🎯
+
+Provides alternative responses when operations fail.
+
+**Fallback Methods:**
+- `getPatientFallback()` - Returns friendly error message
+- `searchPatientsFallback()` - Returns empty list
+- `getAllActivePatientsFallback()` - Returns empty list
+- `getActivePatientCountFallback()` - Returns -1
+
+**Example Response:**
+```json
+{
+  "error": "Service Temporarily Unavailable",
+  "message": "Patient service is experiencing issues. Please try again later.",
+  "status": 503
+}
+```
+
+**Benefit:** Graceful degradation instead of complete failure.
+
+---
+
+#### 5. **Bulkhead Pattern** 🚪
+
+Limits concurrent executions to isolate failures.
+
+**Applied to:**
+- `searchPatients()` - Max 10 concurrent + 20 waiting queue
+- `getAllActivePatients()` - Max 5 concurrent + 10 waiting queue
+
+**Example:**
+```
+Concurrent Capacity: 10
+Request 1-10: ✅ Executing
+Request 11-30: ⏳ Queued
+Request 31+: ❌ Rejected (429 Too Many Requests)
+```
+
+**Benefit:** One slow operation doesn't block everything else.
+
+---
+
+### Self-Healing in Action
+
+#### Scenario 1: Database Temporary Unavailable
+
+```
+User Request → getPatient(1)
+   ↓
+Attempt 1: Database connection timeout ❌
+   ↓ (wait 200ms)
+Attempt 2: Connection refused ❌
+   ↓ (Circuit evaluates: 2 failures)
+Circuit Breaker: Still CLOSED (below 40% threshold)
+   ↓ (wait 200ms)
+Attempt 3: Database recovered ✅
+   ↓
+Return Patient Response to User
+```
+
+**Result:** User never knows there was an issue! ✨
+
+---
+
+#### Scenario 2: Database Completely Down
+
+```
+Multiple Requests → getPatient()
+   ↓
+Requests 1-10: All fail after 2 retries ❌
+   ↓
+Circuit Breaker: 100% failure rate → Opens! 🔴
+   ↓
+Subsequent Requests:
+   - No database calls made
+   - Fallback immediately returns error
+   - Fast failure (no timeout wait)
+   ↓ (wait 5 seconds)
+Circuit: Moves to HALF_OPEN (test mode)
+   ↓
+Test Request: Success! ✅
+   ↓
+Circuit: Closes, back to normal 🟢
+```
+
+**Result:** Service remains responsive, no cascading failures! 💪
+
+---
+
+### Self-Healing Coverage
+
+| Method | Retry | Timeout | Circuit Breaker | Fallback | Bulkhead |
+|--------|:-----:|:-------:|:--------------:|:--------:|:--------:|
+| **registerPatient** | ✅ 3x | ✅ 5s | ❌ | ❌ | ❌ |
+| **getPatient** | ✅ 2x | ✅ 3s | ✅ 40% | ✅ | ❌ |
+| **updatePatient** | ✅ 3x | ✅ 5s | ❌ | ❌ | ❌ |
+| **deactivatePatient** | ✅ 2x | ✅ 3s | ❌ | ❌ | ❌ |
+| **searchPatients** | ✅ 2x | ✅ 5s | ✅ 50% | ✅ | ✅ 10 |
+| **getAllActivePatients** | ❌ | ✅ 10s | ✅ 60% | ✅ | ✅ 5 |
+| **getActivePatientCount** | ✅ 3x | ✅ 3s | ❌ | ✅ | ❌ |
+
+**Total Protection:** 7 methods with multi-layered resilience! 🛡️
+
+---
+
+### Monitoring Self-Healing
+
+#### Prometheus Metrics
+
+The service exposes fault tolerance metrics:
+
+```bash
+# Access metrics
+curl http://localhost:8081/q/metrics
+
+# Key metrics:
+application_ft_retry_calls_total           # Retry attempts
+application_ft_circuitbreaker_opened_total # Circuit opens
+application_ft_timeout_calls_total         # Timeouts
+application_ft_bulkhead_calls_total        # Bulkhead usage
+application_ft_fallback_calls_total        # Fallback activations
+```
+
+#### Health Checks
+
+```bash
+# Service health with circuit breaker status
+curl http://localhost:8081/q/health
+
+# Response includes:
+{
+  "status": "UP",
+  "checks": [
+    {
+      "name": "Circuit Breaker: getPatient",
+      "status": "UP",
+      "data": {
+        "state": "CLOSED",
+        "failureRate": "0.0"
+      }
+    }
+  ]
+}
+```
+
+---
+
+### Benefits of Self-Healing
+
+#### 1. **Automatic Recovery** 🔄
+- No manual intervention needed
+- System recovers from transient failures
+- Reduces operational burden
+
+#### 2. **Prevents Cascading Failures** 🛡️
+- Circuit breaker stops calling failing services
+- Protects downstream dependencies
+- Faster failure detection and recovery
+
+#### 3. **Resource Protection** 💾
+- Bulkheads prevent resource exhaustion
+- Timeouts prevent thread starvation
+- System remains responsive under load
+
+#### 4. **Better User Experience** 😊
+- Fallbacks provide meaningful error messages
+- Fast failure instead of hanging requests
+- Transparent retry for transient issues
+
+#### 5. **Observable** 📊
+- Metrics for every resilience pattern
+- Easy to monitor circuit breaker states
+- Clear visibility into failure patterns
+
+---
+
+### Configuration
+
+#### Enable Fault Tolerance
+
+Add to `application.properties`:
+
+```properties
+# Enable Fault Tolerance
+fault-tolerance.enabled=true
+
+# Circuit Breaker
+MP/Fault/Tolerance/CircuitBreaker/enabled=true
+
+# Retry
+MP/Fault/Tolerance/Retry/enabled=true
+
+# Timeout
+MP/Fault/Tolerance/Timeout/enabled=true
+
+# Bulkhead
+MP/Fault/Tolerance/Bulkhead/enabled=true
+
+# Logging
+quarkus.log.category."io.smallrye.faulttolerance".level=DEBUG
+```
+
+#### Override Individual Methods
+
+```properties
+# Override getPatient timeout to 5 seconds
+com.basit.cz.service.PatientService/getPatient/Timeout/value=5
+
+# Override registerPatient retries to 5
+com.basit.cz.service.PatientService/registerPatient/Retry/maxRetries=5
+
+# Disable circuit breaker for specific method
+com.basit.cz.service.PatientService/searchPatients/CircuitBreaker/enabled=false
+```
 
 ---
 
@@ -324,16 +637,16 @@ http://localhost:8081/api/patients
 
 #### 1️⃣ Patient Management (8 endpoints)
 
-| Method | Endpoint | Description | Request Body | Response | Status Codes |
-|--------|----------|-------------|--------------|----------|--------------|
-| POST | `/register` | Register new patient | PatientDTO.RegistrationRequest | PatientDTO.Response | 201, 409, 400 |
-| GET | `/{id}` | Get patient by ID | - | PatientDTO.Response | 200, 404 |
-| PUT | `/{id}` | Update patient info | PatientDTO.UpdateRequest | PatientDTO.Response | 200, 404, 409 |
-| DELETE | `/{id}` | Deactivate patient | - | - | 204, 404 |
-| GET | `/search?q={term}` | Search by name | - | List<PatientDTO.Response> | 200, 400 |
-| GET | `/` | Get all active patients | - | List<PatientDTO.Response> | 200 |
-| GET | `/count` | Get patient count | - | Long | 200 |
-| GET | `/health` | Health check | - | String | 200 |
+| Method | Endpoint | Description | Request Body | Response | Status Codes | Self-Healing |
+|--------|----------|-------------|--------------|----------|--------------|--------------|
+| POST | `/register` | Register new patient | PatientDTO.RegistrationRequest | PatientDTO.Response | 201, 409, 400 | ✅ Retry, Timeout |
+| GET | `/{id}` | Get patient by ID | - | PatientDTO.Response | 200, 404 | ✅ All patterns |
+| PUT | `/{id}` | Update patient info | PatientDTO.UpdateRequest | PatientDTO.Response | 200, 404, 409 | ✅ Retry, Timeout |
+| DELETE | `/{id}` | Deactivate patient | - | - | 204, 404 | ✅ Retry, Timeout |
+| GET | `/search?q={term}` | Search by name | - | List<PatientDTO.Response> | 200, 400 | ✅ All patterns + Bulkhead |
+| GET | `/` | Get all active patients | - | List<PatientDTO.Response> | 200 | ✅ Circuit Breaker, Bulkhead, Fallback |
+| GET | `/count` | Get patient count | - | Long | 200 | ✅ Retry, Timeout, Fallback |
+| GET | `/health` | Health check | - | String | 200 | - |
 
 #### 2️⃣ Insurance Management (2 endpoints)
 
@@ -523,6 +836,7 @@ docker-compose up -d
 │  • Port: 8081                          │
 │  • Connected to PostgreSQL             │
 │  • Health checks enabled               │
+│  • Self-healing enabled 🛡️            │
 ├────────────────────────────────────────┤
 │  Service 3: Adminer (Database UI)      │
 │  • Port: 8082                          │
@@ -537,6 +851,7 @@ docker-compose up -d
 | Patient API | http://localhost:8081 | - |
 | Swagger UI | http://localhost:8081/swagger-ui | - |
 | Health Check | http://localhost:8081/api/patients/health | - |
+| Metrics (Prometheus) | http://localhost:8081/q/metrics | - |
 | Adminer (DB UI) | http://localhost:8082 | See below |
 
 **Adminer Login**:
@@ -661,6 +976,7 @@ mvn quarkus:dev
 - ✅ Dev UI at http://localhost:8081/q/dev
 - ✅ Swagger UI at http://localhost:8081/swagger-ui
 - ✅ Fast startup
+- ✅ Self-healing enabled
 
 ### Option 2: Development Mode with PostgreSQL
 
@@ -684,6 +1000,7 @@ mvn quarkus:dev
 - API: http://localhost:8081
 - Swagger UI: http://localhost:8081/swagger-ui
 - Dev UI: http://localhost:8081/q/dev
+- Metrics: http://localhost:8081/q/metrics
 
 ### Option 3: Production Mode
 
@@ -772,12 +1089,12 @@ Layer Breakdown:
 │   ├── Count operations
 │   └── Email/phone existence checks
 │
-├── Service Layer (12)
-│   ├── Register patient
-│   ├── Get patient
-│   ├── Update patient
-│   ├── Deactivate patient
-│   ├── Search patients
+├── Service Layer (12) 🛡️ WITH SELF-HEALING
+│   ├── Register patient (Retry, Timeout)
+│   ├── Get patient (All patterns)
+│   ├── Update patient (Retry, Timeout)
+│   ├── Deactivate patient (Retry, Timeout)
+│   ├── Search patients (All patterns + Bulkhead)
 │   ├── Duplicate email handling
 │   └── Business logic validation
 │
@@ -842,6 +1159,7 @@ open target/site/surefire-report.html
 | **Build Tool** | Maven | 3.8+ | Dependency Management |
 | **Database** | PostgreSQL | 16 | Production Database |
 | **Test DB** | H2 | Latest | In-memory Testing |
+| **🆕 Fault Tolerance** | SmallRye Fault Tolerance | Latest | Self-healing capabilities |
 
 ### Libraries & Dependencies
 
@@ -856,6 +1174,7 @@ open target/site/surefire-report.html
 | **REST Testing** | RestAssured | REST API testing |
 | **Mocking** | Mockito | Test mocking |
 | **Assertions** | Hamcrest | Test matchers |
+| **🆕 Resilience** | SmallRye Fault Tolerance | Retry, Circuit Breaker, Timeout, Bulkhead, Fallback |
 
 ### DevOps & Tools
 
@@ -874,6 +1193,8 @@ open target/site/surefire-report.html
 | JBoss Logging | Application logging |
 | Health Checks | Liveness/readiness probes |
 | OpenAPI | API specification |
+| **🆕 Prometheus Metrics** | Fault tolerance metrics |
+| **🆕 Circuit Breaker Metrics** | Self-healing observability |
 
 ---
 
@@ -921,8 +1242,8 @@ patient-service/
 │   │   │   ├── resource/                      # REST Controllers
 │   │   │   │   └── PatientResource.java
 │   │   │   │
-│   │   │   └── service/                       # Business Logic
-│   │   │       └── PatientService.java
+│   │   │   └── service/                       # Business Logic 🛡️
+│   │   │       └── PatientService.java       # WITH SELF-HEALING
 │   │   │
 │   │   └── resources/
 │   │       ├── application.properties         # Configuration
@@ -957,7 +1278,8 @@ patient-service/
 
 **Total Files**: 30+  
 **Total Tests**: 67  
-**Lines of Code**: ~8,500+
+**Lines of Code**: ~8,500+  
+**🆕 Self-Healing**: 7 protected methods
 
 ---
 
@@ -968,6 +1290,7 @@ patient-service/
 - **[README.md](README.md)** - This file (complete guide)
 - **[DOCKER_POSTGRES_GUIDE.md](DOCKER_POSTGRES_GUIDE.md)** - PostgreSQL Docker setup
 - **[POSTGRESQL_DOCKER_SETUP_GUIDE.md](../POSTGRESQL_DOCKER_SETUP_GUIDE.md)** - Detailed PostgreSQL guide
+- **🆕 [SELF_HEALING_GUIDE.md](SELF_HEALING_GUIDE.md)** - Self-healing patterns documentation
 
 ### API Documentation
 
@@ -979,6 +1302,7 @@ patient-service/
 - **Step-by-Step Implementation** - See `/documentation` folder
 - **GitHub Actions Guide** - CI/CD automation
 - **Testing Guide** - Comprehensive testing strategies
+- **🆕 Self-Healing Guide** - Fault tolerance patterns
 
 ---
 
@@ -1010,6 +1334,14 @@ quarkus.log.category."com.healthcare".level=DEBUG
 # OpenAPI / Swagger
 quarkus.swagger-ui.always-include=true
 quarkus.swagger-ui.path=/swagger-ui
+
+# 🆕 Fault Tolerance / Self-Healing
+fault-tolerance.enabled=true
+MP/Fault/Tolerance/CircuitBreaker/enabled=true
+MP/Fault/Tolerance/Retry/enabled=true
+MP/Fault/Tolerance/Timeout/enabled=true
+MP/Fault/Tolerance/Bulkhead/enabled=true
+quarkus.log.category."io.smallrye.faulttolerance".level=DEBUG
 ```
 
 ### Environment Variables
@@ -1046,6 +1378,7 @@ This is an academic project, but feedback and suggestions are welcome!
 - Keep methods focused and small
 - Use meaningful variable names
 - Follow existing code style
+- **🆕 Add fault tolerance annotations where appropriate**
 
 ---
 
@@ -1090,6 +1423,15 @@ mvn clean test -X
 mvn clean install -U
 ```
 
+#### 🆕 Circuit Breaker Always Open
+
+**Check metrics**:
+```bash
+curl http://localhost:8081/q/metrics | grep circuitbreaker
+```
+
+**Reset circuit breaker** by waiting for the delay period or restarting the service.
+
 ---
 
 ## 📊 Performance
@@ -1100,6 +1442,8 @@ mvn clean install -U
 - **Memory Usage**: ~200-300 MB
 - **Request Latency**: <50ms (average)
 - **Database Queries**: Optimized with indexes
+- **🆕 Retry Overhead**: <500ms per retry attempt
+- **🆕 Circuit Breaker Response**: <1ms (when open)
 
 ### Optimization
 
@@ -1107,6 +1451,9 @@ mvn clean install -U
 - Database indexes on frequently queried columns
 - Bean Validation for early error detection
 - DTO pattern reduces data transfer
+- **🆕 Bulkhead prevents resource exhaustion**
+- **🆕 Timeouts prevent thread starvation**
+- **🆕 Circuit breaker enables fast failure**
 
 ---
 
@@ -1119,6 +1466,8 @@ mvn clean install -U
 - ✅ Email uniqueness constraint
 - ✅ Foreign key constraints
 - ✅ Soft delete for data retention
+- ✅ **🆕 Timeout protection against slow attacks**
+- ✅ **🆕 Bulkhead prevents resource exhaustion attacks**
 
 ### Future Enhancements
 
@@ -1137,7 +1486,7 @@ This project is created for educational purposes as part of the Software System 
 
 **Educational Use Only** - Not licensed for commercial use.
 
-
+---
 
 ## 🗺️ Roadmap
 
@@ -1148,6 +1497,7 @@ This project is created for educational purposes as part of the Software System 
 - ✅ Docker support
 - ✅ PostgreSQL integration
 - ✅ Swagger documentation
+- ✅ **🆕 Self-healing with fault tolerance**
 
 ### Future Enhancements
 - [ ] Authentication & Authorization
@@ -1160,6 +1510,8 @@ This project is created for educational purposes as part of the Software System 
 - [ ] Kubernetes Deployment
 - [ ] Performance Benchmarks
 - [ ] Load Testing
+- [ ] **🆕 Advanced circuit breaker strategies**
+- [ ] **🆕 Distributed tracing with Jaeger**
 
 ---
 
@@ -1177,6 +1529,9 @@ This project is created for educational purposes as part of the Software System 
 | Files | 30+ |
 | Build Time | ~30 seconds |
 | Test Execution | ~15 seconds |
+| **🆕 Self-Healing Methods** | **7** |
+| **🆕 Fault Tolerance Patterns** | **5** |
+| **🆕 Fallback Methods** | **4** |
 
 ---
 
@@ -1206,6 +1561,11 @@ docker-compose down             # Stop stack
 docker start patient-postgres   # Start DB
 docker stop patient-postgres    # Stop DB
 docker logs patient-postgres    # View logs
+
+# 🆕 Monitoring
+curl http://localhost:8081/q/metrics          # Prometheus metrics
+curl http://localhost:8081/q/health           # Health check
+curl http://localhost:8081/q/health/ready     # Readiness probe
 ```
 
 ### Important URLs
@@ -1216,6 +1576,35 @@ docker logs patient-postgres    # View logs
 | Swagger UI | http://localhost:8081/swagger-ui |
 | Dev UI | http://localhost:8081/q/dev |
 | Health Check | http://localhost:8081/api/patients/health |
+| **🆕 Metrics** | **http://localhost:8081/q/metrics** |
 | Database UI | http://localhost:8082 |
+
+---
+
+## 🎓 Academic Value
+
+This project demonstrates production-grade microservice development suitable for academic evaluation:
+
+### Core Competencies
+- ✅ RESTful API Design
+- ✅ Database Design & Normalization
+- ✅ Layered Architecture
+- ✅ Test-Driven Development
+- ✅ Docker & Containerization
+- ✅ API Documentation (OpenAPI/Swagger)
+- ✅ **🆕 Resilience Engineering**
+- ✅ **🆕 Fault Tolerance Patterns**
+- ✅ **🆕 Self-Healing Systems**
+- ✅ **🆕 Observable Microservices**
+
+### Advanced Patterns
+- ✅ Repository Pattern
+- ✅ DTO Pattern
+- ✅ Dependency Injection
+- ✅ **🆕 Circuit Breaker Pattern**
+- ✅ **🆕 Retry Pattern**
+- ✅ **🆕 Bulkhead Pattern**
+- ✅ **🆕 Timeout Pattern**
+- ✅ **🆕 Fallback Pattern**
 
 ---
