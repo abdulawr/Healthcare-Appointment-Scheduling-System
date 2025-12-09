@@ -50,10 +50,19 @@ public class InvoiceResource {
     @Operation(summary = "Get invoice by appointment")
     public Response getInvoiceByAppointment(
             @PathParam("appointmentId") Long appointmentId) {
-        InvoiceResponse response =
-                invoiceService.getInvoiceByAppointment(appointmentId);
-        return Response.ok(response).build();
+
+        // Call the service to fetch invoice response
+        InvoiceResponse response = invoiceService.getInvoiceByAppointment(appointmentId);
+
+        // If the response is not null (invoice found), return 200 OK with the response
+        if (response != null) {
+            return Response.ok(response).build();
+        }
+
+        // If no invoice is found (response is null), return 204 No Content (empty response)
+        return Response.status(Response.Status.NO_CONTENT).build();
     }
+
 
     @PUT
     @Path("/{id}")

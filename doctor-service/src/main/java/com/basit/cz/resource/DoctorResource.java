@@ -1,10 +1,7 @@
 package com.basit.cz.resource;
 
 
-import com.basit.cz.dto.CreateDoctorRequest;
-import com.basit.cz.dto.DoctorDTO;
-import com.basit.cz.dto.SpecializationDTO;
-import com.basit.cz.dto.UpdateDoctorRequest;
+import com.basit.cz.dto.*;
 import com.basit.cz.service.DoctorService;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -334,6 +331,82 @@ public class DoctorResource {
         doctorService.deactivateDoctor(id);
         return Response.noContent().build();
     }
+
+
+    // ===============================================
+    // REVIEW ENDPOINTS
+    // ===============================================
+
+    /**
+     * Get all reviews for a doctor
+     *
+     * @param id Doctor ID
+     * @return List of reviews (200)
+     */
+    @GET
+    @Path("/{id}/reviews")
+    @Operation(summary = "Get doctor reviews", description = "Retrieve all reviews for a specific doctor")
+    @APIResponse(responseCode = "200", description = "Reviews retrieved successfully")
+    @APIResponse(responseCode = "404", description = "Doctor not found")
+    public Response getDoctorReviews(@PathParam("id") Long id) {
+        List<ReviewDTO> reviews = doctorService.getDoctorReviews(id);
+        return Response.ok(reviews).build();
+    }
+
+    /**
+     * Add a review for a doctor
+     *
+     * @param id Doctor ID
+     * @param request Review data
+     * @return Created review (201)
+     */
+    @POST
+    @Path("/{id}/reviews")
+    @Operation(summary = "Add doctor review", description = "Submit a review and rating for a doctor")
+    @APIResponse(responseCode = "201", description = "Review created successfully")
+    @APIResponse(responseCode = "404", description = "Doctor not found")
+    @APIResponse(responseCode = "400", description = "Invalid input or patient already reviewed")
+    public Response addDoctorReview(@PathParam("id") Long id,
+                                    @Valid CreateReviewRequest request) {
+        ReviewDTO review = doctorService.addDoctorReview(id, request);
+        return Response.status(Response.Status.CREATED).entity(review).build();
+    }
+
+    /**
+     * Get verified reviews for a doctor
+     *
+     * @param id Doctor ID
+     * @return List of verified reviews (200)
+     */
+    @GET
+    @Path("/{id}/reviews/verified")
+    @Operation(summary = "Get verified reviews", description = "Retrieve only verified reviews for a doctor")
+    @APIResponse(responseCode = "200", description = "Verified reviews retrieved")
+    @APIResponse(responseCode = "404", description = "Doctor not found")
+    public Response getVerifiedReviews(@PathParam("id") Long id) {
+        List<ReviewDTO> reviews = doctorService.getVerifiedDoctorReviews(id);
+        return Response.ok(reviews).build();
+    }
+
+    /**
+     * Get reviews by rating
+     *
+     * @param id Doctor ID
+     * @param rating Rating value (1-5)
+     * @return List of reviews with specified rating (200)
+     */
+    @GET
+    @Path("/{id}/reviews/rating/{rating}")
+    @Operation(summary = "Get reviews by rating", description = "Retrieve reviews with a specific rating")
+    @APIResponse(responseCode = "200", description = "Reviews retrieved")
+    @APIResponse(responseCode = "404", description = "Doctor not found")
+    @APIResponse(responseCode = "400", description = "Invalid rating")
+    public Response getReviewsByRating(@PathParam("id") Long id,
+                                       @PathParam("rating") int rating) {
+        List<ReviewDTO> reviews = doctorService.getDoctorReviewsByRating(id, rating);
+        return Response.ok(reviews).build();
+    }
+
 }
 
 

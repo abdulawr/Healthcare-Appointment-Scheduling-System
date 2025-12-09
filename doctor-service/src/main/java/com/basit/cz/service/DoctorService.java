@@ -470,6 +470,117 @@ public class DoctorService {
                                     LocalTime start2, LocalTime end2) {
         return start1.isBefore(end2) && end1.isAfter(start2);
     }
+
+
+    // ===============================================
+    // REVIEW MANAGEMENT METHODS
+    // ===============================================
+
+    /**
+     * Add a review for a doctor
+     */
+    @Transactional
+    public ReviewDTO addDoctorReview(Long doctorId, CreateReviewRequest request) {
+        // Validate doctor exists
+        Doctor doctor = doctorRepository.findByIdOptional(doctorId)
+                .orElseThrow(() -> new NotFoundException("Doctor not found with id: " + doctorId));
+
+        // Check if patient already reviewed this doctor
+        List<DoctorReview> existingReviews = reviewRepository.findByPatientId(request.patientId);
+        boolean alreadyReviewed = existingReviews.stream()
+                .anyMatch(r -> r.doctor.id.equals(doctorId));
+
+        if (alreadyReviewed) {
+            throw new IllegalArgumentException(
+                    "Patient has already reviewed this doctor. Please update the existing review instead.");
+        }
+
+        // Create new review
+        DoctorReview review = new DoctorReview();
+        review.doctor = doctor;
+        review.patientId = request.patientId;
+        review.rating = request.rating;
+        review.comment = request.comment;
+        review.patientName = request.patientName;
+        review.isVerified = false; // Can be verified later
+        review.createdAt = LocalDateTime.now();
+        review.updatedAt = LocalDateTime.now();
+
+        // Persist review
+        reviewRepository.persist(review);
+
+        // Update doctor's average rating and review count
+        updateDoctorRatingStats(doctor);
+
+        return ReviewMapper.toDTO(review);
+    }
+
+    /**
+     * Get all reviews for a doctor
+     */
+    public List<ReviewDTO> getDoctorReviews(Long doctorId) {
+        // Validate doctor exists
+        Doctor doctor = doctorRepository.findByIdOptional(doctorId)
+                .orElseThrow(() -> new NotFoundException("Doctor not found with id: " + doctorId));
+
+        List<DoctorReview> reviews = reviewRepository.findByDoctorId(doctorId);
+
+        return reviews.stream()
+                .map(ReviewMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get reviews with specific rating for a doctor
+     */
+    public List<ReviewDTO> getDoctorReviewsByRating(Long doctorId, int rating) {
+        // Validate doctor exists
+        Doctor doctor = doctorRepository.findByIdOptional(doctorId)
+                .orElseThrow(() -> new NotFoundException("Doctor not found with id: " + doctorId));
+
+        // Validate rating range
+        if (rating < 1 || rating > 5) {
+            throw new IllegalArgumentException("Rating must be between 1 and 5");
+        }
+
+        List<DoctorReview> reviews = reviewRepository.findByDoctorAndRating(doctorId, rating);
+
+        return reviews.stream()
+                .map(ReviewMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get verified reviews for a doctor
+     */
+    public List<ReviewDTO> getVerifiedDoctorReviews(Long doctorId) {
+        // Validate doctor exists
+        Doctor doctor = doctorRepository.findByIdOptional(doctorId)
+                .orElseThrow(() -> new NotFoundException("Doctor not found with id: " + doctorId));
+
+        List<DoctorReview> reviews = reviewRepository.findVerifiedByDoctor(doctorId);
+
+        return reviews.stream()
+                .map(ReviewMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Update doctor's rating statistics after a review is added/updated
+     */
+    @Transactional
+    public void updateDoctorRatingStats(Doctor doctor) {
+        Double avgRating = reviewRepository.getAverageRating(doctor.id);
+        long totalReviews = reviewRepository.count("doctor.id", doctor.id);
+
+        doctor.averageRating = avgRating != null ? avgRating : 0.0;
+        doctor.totalReviews = (int) totalReviews;
+        doctor.updatedAt = LocalDateTime.now();
+
+        doctorRepository.persist(doctor);
+    }
+
+
 }
 
 

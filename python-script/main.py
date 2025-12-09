@@ -13,6 +13,8 @@ from typing import Optional, List, Dict
 import random, string
 from datetime import datetime, timedelta, timezone
 
+from idna import ulabel
+
 
 # ============================================================================
 # SERVICE CLIENT CLASSES
@@ -250,15 +252,76 @@ class BillingServiceClient:
         response.raise_for_status()
         return response.json()
 
+    def create_appoinment_invoice(self,appointment_id: str,patient_id):
+        print("Creating appointment invoice.....")
+        base_url = "http://localhost:8085/api/billing"
+        create_invoice_url = f"{base_url}/invoices"
+        dummy_items_pool = [
+            {"description": "Initial Consultation", "quantity": 1, "unitPrice": 150.00},
+            {"description": "Follow-up Visit", "quantity": 1, "unitPrice": 100.00},
+            {"description": "Blood Test - Complete Blood Count", "quantity": 1, "unitPrice": 45.00},
+            {"description": "Blood Test - Lipid Panel", "quantity": 1, "unitPrice": 55.00},
+            {"description": "X-Ray - Chest", "quantity": 1, "unitPrice": 200.00},
+            {"description": "X-Ray - Dental", "quantity": 1, "unitPrice": 85.00},
+            {"description": "ECG/EKG Test", "quantity": 1, "unitPrice": 120.00},
+            {"description": "Ultrasound Scan", "quantity": 1, "unitPrice": 250.00},
+            {"description": "MRI Scan", "quantity": 1, "unitPrice": 800.00},
+            {"description": "CT Scan", "quantity": 1, "unitPrice": 600.00},
+            {"description": "Physical Examination", "quantity": 1, "unitPrice": 75.00},
+            {"description": "Vaccination - Flu Shot", "quantity": 1, "unitPrice": 35.00},
+            {"description": "Vaccination - COVID-19", "quantity": 1, "unitPrice": 40.00},
+            {"description": "Prescription Medication", "quantity": 1, "unitPrice": 65.00},
+            {"description": "Diabetes Screening", "quantity": 1, "unitPrice": 80.00},
+            {"description": "Thyroid Function Test", "quantity": 1, "unitPrice": 95.00},
+            {"description": "Urinalysis", "quantity": 1, "unitPrice": 30.00},
+            {"description": "Vision Test", "quantity": 1, "unitPrice": 50.00},
+            {"description": "Hearing Test", "quantity": 1, "unitPrice": 60.00},
+            {"description": "Allergy Testing", "quantity": 1, "unitPrice": 180.00}
+        ]
+
+        num_items = random.randint(2, 4)
+        selected_items = random.sample(dummy_items_pool, num_items)
+
+        # Create invoice request payload
+        invoice_data = {
+            "appointmentId": int(appointment_id),
+            "patientId": patient_id,
+            "items": selected_items,
+            "notes": f"Generated invoice for appointment #{appointment_id} on {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        }
+
+        try:
+            # Make POST request to create invoice
+            response = requests.post(
+                create_invoice_url,
+                headers={"Content-Type": "application/json"},
+                json=invoice_data,
+                timeout=10
+            )
+
+            # Raise exception for bad status codes
+           # response.raise_for_status()
+
+            # Return created invoice
+            created_invoice = response.json()
+            return created_invoice
+        except Exception as e:
+            print(f"❌ Unexpected error: {str(e)}")
+            raise
+
+
     def verify_insurance(self, patient_id: str, provider: str,
-                         policy_number: str) -> Dict:
+                         policy_number: str,invoice_id,amount) -> Dict:
         """POST /api/billing/insurance/verify - Verify insurance coverage"""
         url = f"{self.base_url}{self.api_prefix}/insurance/verify"
 
         payload = {
             "patientId": patient_id,
-            "provider": provider,
-            "policyNumber": policy_number
+            "insuranceProvider": provider,
+            "policyNumber": policy_number,
+            "claimedAmount":amount,
+            "serviceDate": "2025-12-10",
+            "invoiceId":invoice_id
         }
 
         response = requests.post(url, json=payload)
@@ -271,11 +334,15 @@ class BillingServiceClient:
 
         payload = {
             "invoiceId": invoice_id,
+            "claimedAmount": insurance_info['claimedAmount'],
+            "insuranceProvider": insurance_info['insuranceProvider'],
+            "policyNumber": insurance_info['policyNumber'],
             "insuranceInfo": insurance_info
         }
 
+
         response = requests.post(url, json=payload)
-        response.raise_for_status()
+        # response.raise_for_status()
         return response.json()
 
     def process_payment(self, invoice_id: str, amount: float,
@@ -286,11 +353,11 @@ class BillingServiceClient:
         payload = {
             "invoiceId": invoice_id,
             "amount": amount,
-            "paymentMethod": payment_method
+            "paymentMethod": payment_method,
+            "gateway":"Stripe"
         }
-
         response = requests.post(url, json=payload)
-        response.raise_for_status()
+        # response.raise_for_status()
         return response.json()
 
     def get_revenue_report(self, start_date: Optional[str] = None,
@@ -542,7 +609,8 @@ class HealthcareSystemIntegration:
 
             try:
                 # Get invoice by appointment
-                invoice = self.billing_service.get_invoice_by_appointment(appointment_id)
+                invoice =  self.billing_service.create_appoinment_invoice(appointment_id,patient_id);
+               # invoice = self.billing_service.get_invoice_by_appointment(appointment_id)
                 invoice_id = invoice["id"]
 
                 print(f"✅ Invoice auto-generated:")
@@ -554,25 +622,27 @@ class HealthcareSystemIntegration:
                 print("🔍 Verifying insurance coverage...")
                 insurance_verification = self.billing_service.verify_insurance(
                     patient_id=patient_id,
-                    provider="HealthCare Plus",
-                    policy_number="HCP-123456"
+                    provider="AXA Insurance "+policy_unique_number,
+                    policy_number=policy_unique_number,
+                    invoice_id=invoice_id,
+                    amount=invoice['total']
                 )
                 print(f"✅ Insurance verified:")
-                print(f"   Coverage: {insurance_verification['coveragePercentage']}%")
-                print(f"   Copay: ${insurance_verification['copayAmount']:.2f}\n")
+                print(f"   Claim Amount: {insurance_verification['claimedAmount']}%")
+                print(f"   Approved Amount: ${invoice['total']}\n")
 
                 # Submit insurance claim
                 claim = self.billing_service.submit_insurance_claim(
                     invoice_id=invoice_id,
                     insurance_info=insurance_verification
                 )
-                print(f"✅ Insurance claim submitted: {claim['claimId']}\n")
+                print(f"✅ Insurance claim submitted: {claim['id']}\n")
 
                 # Process payment (patient pays copay)
                 payment = self.billing_service.process_payment(
                     invoice_id=invoice_id,
-                    amount=insurance_verification["copayAmount"],
-                    payment_method="credit_card"
+                    amount=insurance_verification["claimedAmount"],
+                    payment_method="CREDIT_CARD"
                 )
 
                 print(f"✅ Payment processed:")
@@ -584,6 +654,7 @@ class HealthcareSystemIntegration:
             except Exception as e:
                 print(f"⚠️  Billing processing note: {e}")
                 print(f"   (Invoice may be generated asynchronously)\n")
+
 
             # ============= STEP 7: ANALYTICS & INSIGHTS =============
             print("\n📊 STEP 7: ANALYTICS & INSIGHTS")

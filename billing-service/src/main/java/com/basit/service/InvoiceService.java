@@ -71,13 +71,18 @@ public class InvoiceService {
     }
 
     public InvoiceResponse getInvoiceByAppointment(Long appointmentId) {
+        // Fetch the invoice by appointment ID
         Invoice invoice = invoiceRepository.findByAppointmentId(appointmentId);
+
+        // If no invoice is found, return null which will trigger a 204 No Content response in the API
         if (invoice == null) {
-            throw new NotFoundException(
-                    "Invoice not found for appointment: " + appointmentId);
+            return null;
         }
+
+        // If invoice is found, return the mapped response
         return invoiceMapper.toResponse(invoice);
     }
+
 
     @Transactional
     public InvoiceResponse updateInvoice(Long id, InvoiceCreateRequest request) {

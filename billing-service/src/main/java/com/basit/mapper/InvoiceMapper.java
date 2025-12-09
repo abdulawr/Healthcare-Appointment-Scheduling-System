@@ -6,6 +6,7 @@ import com.basit.entity.Invoice;
 import com.basit.entity.InvoiceItem;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
@@ -37,7 +38,14 @@ public class InvoiceMapper {
     }
 
     public InvoiceResponse toResponse(Invoice invoice) {
+        // Handle the case when the invoice is null
+        if (invoice == null) {
+            return null; // Returning null or you could throw a custom exception if needed
+        }
+
         InvoiceResponse response = new InvoiceResponse();
+
+        // Safely map the properties from the invoice
         response.id = invoice.id;
         response.appointmentId = invoice.appointmentId;
         response.patientId = invoice.patientId;
@@ -52,12 +60,19 @@ public class InvoiceMapper {
         response.paidDate = invoice.paidDate;
         response.notes = invoice.notes;
 
-        response.items = invoice.items.stream()
-                .map(this::toItemResponse)
-                .collect(Collectors.toList());
+        // Safely handle the invoice items (if items is null, return an empty list)
+        if (invoice.items != null) {
+            response.items = invoice.items.stream()
+                    .map(this::toItemResponse)
+                    .collect(Collectors.toList());
+        } else {
+            response.items = new ArrayList<>();  // Return an empty list if items is null
+        }
 
         return response;
     }
+
+
 
     private InvoiceResponse.InvoiceItemResponse toItemResponse(InvoiceItem item) {
         InvoiceResponse.InvoiceItemResponse response =
